@@ -1,6 +1,6 @@
 # Meeting Intelligence System
 
-A meeting pipeline that runs entirely Locally. It takes meeting recordings, made with knowledge and consent manually (non-negotiable, and check your local law), and turns them into speaker-labelled intelligence notes + one short daily brief. Nothing leaves the machine. My meetings are live deal conversations, M&A, Policy impact, negotiations, so privacy was the Primary for me.
+A meeting pipeline that runs entirely Locally. It takes meeting recordings, made with knowledge and consent manually (non-negotiable, and check your local law), and turns them into speaker-labelled intelligence notes + one short daily brief. Nothing leaves the machine. My meetings are live deal conversations, M&A, Policy impact, negotiations, so privacy was the Primary thing for me.
 
 **Status: work in progress, in daily production use since early July 2026.** Five milestones passed so far, each one closed with a written pass gate and a checkpoint document.
 
@@ -8,7 +8,7 @@ A meeting pipeline that runs entirely Locally. It takes meeting recordings, made
 
 This documents a working personal system I use in my daily workflow. Its not packaged as an installable app, and isn't trying to be one yet.
 
-The operational system contains private recordings, transcripts, identity mappings, personal context and confidential business information. All of that stays in a separate private repository and will not be published. I've made public is what I am focused on: the system design, the operating rules and quality gates, plus sanitized control documents, current limitations and the roadmap. The source code lands after a privacy pass (machine paths, personal specifics). As Documents are the thing in my wheelhouse, the docs first approach is as planned
+The operational system contains private recordings, transcripts, identity mappings, personal context and confidential business information. All of that stays in a separate private repository and will not be published. What I've made public is what I am focused on: the system design, the operating rules and quality gates, plus sanitized control documents, current limitations and the roadmap. The source code lands after a privacy pass (machine paths, personal specifics). Documents are the thing in my wheelhouse, so the docs first approach is as planned.
 
 ## Who wrote what
 
@@ -47,3 +47,10 @@ New processing paths run in "shadow" alongside the trusted path, and they only g
 ## What I'd tell you it gets wrong
 
 Speaker identification is genuinely unreliable at the source. The fix wasn't demanding perfect labelling (probably impossible), it was a standing rule downstream: never take a speaker label at face value, reconcile it against known context, flag rather than assert. A lot of what I do here comes down to pushing correctness to the layer where it's cheapest to get.
+
+## Where this is heading
+
+- **Phone recordings.** Most of my conversations don't happen at a laptop, they happen on calls and in rooms. The phone ingest lane is built and has passed its production-admission milestone; the final end-to-end proof on a real phone recording is the active milestone right now. Once that closes, laptop and phone feed the same daily brief.
+- **Self notes.** Same pipeline, different input: voice memos to myself. After a meeting I couldn't record (no consent, no setup), or when a thought or learning pops up mid-day, I talk into the phone and it lands in the same intelligence flow as everything else. Planned, not built yet.
+- **Group calls.** Working in shadow mode, but group speaker-separation has a lower confidence bar, so it stays out of production until it earns its own evidence gate.
+- **Plenty more in the parking lot.** Every parked idea has a written trigger for when it comes back. The rule is the trigger promotes it, not my enthusiasm on a random Tuesday.
