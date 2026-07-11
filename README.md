@@ -1,8 +1,14 @@
 # Meeting Intelligence System
 
-A meeting pipeline that runs entirely on my Mac. It takes recorded meetings and turns them into speaker-labelled intelligence notes and one short daily brief. Nothing leaves the machine. My meetings are live deal conversations, so privacy wasn't a feature request... it was the starting constraint.
+A meeting pipeline that runs entirely on my Mac. It takes meeting recordings, made with participants' knowledge and consent (non-negotiable, and check your local law), and turns them into speaker-labelled intelligence notes and one short daily brief. Nothing leaves the machine. My meetings are live deal conversations, so privacy wasn't a feature request... it was the starting constraint.
 
-**Status: work in progress, in daily production use since early July 2026.** Five milestones passed so far, each closed with a written pass gate and a checkpoint document. This repo currently holds the system's design and control documents. The source code lands after a privacy pass (machine paths, personal specifics). Docs first is deliberate: the documents are the part I actually author.
+**Status: work in progress, in daily production use since early July 2026.** Five milestones passed so far, each closed with a written pass gate and a checkpoint document.
+
+## Repository status
+
+This repository documents a working personal system that I use in my daily workflow. It is not packaged as an installable application, and isn't trying to be one yet.
+
+The operational system contains private recordings, transcripts, identity mappings, personal context and confidential business information. All of those data layers stay in a separate private repository and will not be published. What's public here is the system design, the operating rules and quality gates, and sanitized control documents, along with current limitations and the roadmap. The source code lands after a privacy pass (machine paths, personal specifics). Docs first is deliberate: the documents are the part I actually author.
 
 ## Who wrote what
 
