@@ -1,8 +1,40 @@
 # Meeting Intelligence System
 
-A meeting pipeline that runs entirely Locally. It takes meeting recordings, made with knowledge and consent manually (non-negotiable, and check your local law), and turns them into speaker-labelled intelligence notes + one short daily brief. Nothing leaves the machine. My meetings are live deal conversations, M&A, Policy impact, negotiations, so privacy was the Primary thing for me.
+A meeting pipeline that runs entirely locally. It takes meeting recordings, made with participants' knowledge and consent (non-negotiable, and check your local law), and turns them into speaker-labelled intelligence notes + one short daily brief. Nothing leaves the machine. My meetings are live deal conversations, M&A, policy impact, negotiations, so privacy was the primary thing for me.
 
 **Status: work in progress, in daily production use since early July 2026.** Five milestones passed so far, each one closed with a written pass gate and a checkpoint document.
+
+## What it produces
+
+The daily brief is the whole point: one short read over morning coffee instead of replaying hours of calls. Here's the shape of it (illustrative sample, fictional names and deals... the real ones stay private):
+
+```
+DAILY BRIEF — sample
+
+MEETING: 1:1 — Sharan x "Arjun" (AcmeFund)   [2 speakers, confirmed]
+
+SIGNALS
+- AcmeFund closing a $2M bridge into "Nimbus Games" this month;
+  Arjun wants co-investor intros.
+- Warm on a Q4 co-hosted founder event. Low commitment, revisit
+  after their close.
+
+ACTIONS (owner)
+- Sharan: send Nimbus deck to Arjun by Friday.
+- Arjun: share bridge terms note ("early next week").
+
+WATCH
+- "Meridian Studio" mentioned twice as acquisition-curious.
+  New name, nothing on file yet.
+```
+
+Behind that sits a detailed per-meeting note (people, companies, deal signals, who committed to what), and behind that the full transcript, which almost never gets read.
+
+## What works today, what doesn't yet
+
+Works: laptop-recorded 1:1 meetings run end to end every day... capture, transcript, who-said-what, intelligence note, daily brief. Five milestones passed on real meetings.
+
+Not yet: phone recordings (lane built, final real-recording proof is the active milestone), group calls (shadow mode only), and the source code isn't published here yet.
 
 ## Repository status
 
@@ -43,6 +75,17 @@ One daily brief
 ```
 
 New processing paths run in "shadow" alongside the trusted path, and they only get promoted after passing a gate on five consecutive real meetings, judged by me on things I can actually verify: did it miss anything important, did it put words in the wrong person's mouth, did it assign actions to the right owner. The old path stays around as a clearly labelled fallback.
+
+```
+trusted path ────────────────────────────► production (daily brief)
+                                                ▲
+new path (shadow) ──► GATE: 5 consecutive ─────┘
+                      real meetings,
+                      judged by me
+                          │
+                      fails? stays in shadow.
+                      production never notices.
+```
 
 ## What I'd tell you it gets wrong
 
