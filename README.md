@@ -2,7 +2,7 @@
 
 A meeting pipeline that runs entirely locally. It takes meeting recordings, made with participants' knowledge and consent (non-negotiable, and check your local law), and turns them into speaker-labelled intelligence notes + one short daily brief. Nothing leaves the machine. My meetings are live deal conversations, M&A, policy impact, negotiations, so privacy was the primary thing for me.
 
-**Status: work in progress, in daily production use since early July 2026.** Five milestones passed so far, each one closed with a written pass gate and a checkpoint document.
+**Status: work in progress, in daily production use since early July 2026.** Five milestones passed and closed, each with a written pass gate and a checkpoint document. The bet the earlier version of this page was still waiting on... that speaker-attributed processing could beat the simple path on real meetings and be promoted to production... has since paid off. Details below, including the parts that didn't work.
 
 ## What it produces
 
@@ -32,9 +32,13 @@ Behind that sits a detailed per-meeting note (people, companies, deal signals, w
 
 ## What works today, what doesn't yet
 
-Works: laptop-recorded 1:1 meetings run end to end every day... capture, transcript, who-said-what, intelligence note, daily brief. Five milestones passed on real meetings.
+Works: laptop-recorded 1:1 meetings run end to end every day... capture, transcript, who-said-what, intelligence note, daily brief. The diarized path is now the normal one, promoted after it won its quality gate on real meetings. The old flat path stays as a labelled fallback.
 
-Not yet: phone recordings (lane built, final real-recording proof is the active milestone), group calls (shadow mode only), and the source code isn't published here yet.
+Phone recordings: the lane is built and the end-to-end proof on a real recording has passed, in isolation, without touching production. What's left is unglamorous and is the active priority... making the phone-to-laptop file fetch reliable enough to trust daily.
+
+Not yet: group calls (shadow mode only, lower confidence bar on separating speakers), and the source code isn't published here yet.
+
+One real limitation, stated plainly because it's the kind of thing that usually gets buried: **the phone lane records in-person conversations only. It does not capture phone calls**, cellular or VoIP. That's a coverage gap for the conversations that never touch a laptop, and I haven't measured how big it is yet. The next test is bounded... try the phone's native dialer recording, with consent, and see if it clears the quality bar. If it doesn't, that's a separate capture lane and a separate decision. What I'm not going to do is reach for an unverified call-recording app or work around the OS to close it faster.
 
 ## Repository status
 
@@ -50,13 +54,36 @@ Me: the product definition, the architecture boundaries, the control file, the q
 
 ## This is Interesting and took work: the control file
 
-[docs/PROJECT_CONTROL.md](docs/PROJECT_CONTROL.md) is the live contract the AI builder works under, copied from the working system on 11 July 2026. A few of its rules do most of the work:
+[docs/PROJECT_CONTROL.md](docs/PROJECT_CONTROL.md) is the live contract the AI builder works under, copied from the working system on 16 July 2026 (two redactions: my machine path and a cloud folder name). A few of its rules do most of the work:
 
 - One active milestone at a time. Everything else waits, no matter how interesting. Otherwise my ADHD had me chasing rabbitholes, new things to learn and experiment and constant dopamine from trying new things.
 - A milestone passes only on proof from a real meeting, not on tests looking green. The written success bar for the whole product is that I use it on real meetings as part of my normal day, not that the pipeline produces technically correct output.
 - Every new issue gets classified before it's allowed to consume attention: blocker, quality finding, follow-up or parked. Only a blocker may interrupt the active milestone.
 - Parked ideas carry a written trigger for when they come back, so nothing gets lost and nothing sneaks back in early either. There are hundreds of these.
 - "The control file wins over conversational drift." The builder re-reads it at the start of every session and states the active milestone before doing anything.
+
+There's also a rule in there I'd put in front of anyone building with AI: never run capture, transcription, diarization or model calls just to validate documentation. Docs describe the system, they don't get to summon it.
+
+## The rule earning its keep: I deleted a working feature
+
+The cleanest proof the WIP cap is real, rather than a nice paragraph on a README, is what happened on 11 July. A live Gmail sync engine got built... 622 lines, tests, a privacy model, its own setup docs. Genuinely useful, and nowhere near the active milestone.
+
+It survived about nineteen hours. The revert took out 1,160 lines. Same day I was busy publishing this repo for a deadline, which is exactly when you're most tempted to keep a shiny thing around because it looks good.
+
+Parking it wasn't an option, half-built features rot and then lie to you about what the system does. So it went, with a trigger written down for when it comes back. Losing a day of the builder's work costs almost nothing. Carrying an unproven lane inside a system I'm trying to trust costs a lot.
+
+## Documents have a chain of command
+
+Once there were five milestones of history, the docs started disagreeing with each other, which is its own failure mode... every stale plan sounds authoritative if you read it on its own. So the docs got reconciled down to four current ones (control, architecture, operations, decisions) and everything else got demoted rather than deleted, under a written authority order:
+
+```
+1. current code + deterministic tests    <- what is actually true
+2. the control file + current docs       <- what we've decided
+3. dated checkpoints + proof artifacts   <- historical evidence
+4. old plans, handovers, generated output <- dated, not current
+```
+
+Nothing is thrown away, it just loses the right to be believed. The lower tiers are evidence of what was true on a date, not instructions for today. This solved a problem I kept hitting, where an old handover doc would quietly overrule a newer decision because it happened to be the file I opened first.
 
 ## How it works, plain version
 
@@ -93,7 +120,7 @@ Speaker identification is genuinely unreliable at the source. The fix wasn't dem
 
 ## Where this is heading
 
-- **Phone recordings.** Most of my conversations don't happen at a laptop, they happen on calls and in rooms. The phone ingest lane is built and has passed its production-admission milestone; the final end-to-end proof on a real phone recording is the active milestone right now. Once that closes, laptop and phone feed the same daily brief.
+- **Phone recordings.** Most of my conversations don't happen at a laptop, they happen on calls and in rooms. The lane is built, admitted to production, and the end-to-end proof on a real recording has passed in isolation. What's active now is making the fetch from phone to laptop reliable, which is the least interesting problem here and the one standing between this and daily use. In-person only for now, see the limitation above.
 - **Self notes.** Same pipeline, different input: voice memos to myself. After a meeting I couldn't record (no consent, no setup), or when a thought or learning pops up mid-day, I talk into the phone and it lands in the same intelligence flow as everything else. Planned, not built yet.
 - **Group calls.** Working in shadow mode, but group speaker-separation has a lower confidence bar, so it stays out of production until it earns its own evidence gate.
 - **Plenty more in the parking lot.** Every parked idea has a written trigger for when it comes back. The rule is the trigger promotes it, not my enthusiasm on a random Tuesday.
