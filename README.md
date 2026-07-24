@@ -4,6 +4,13 @@ A meeting pipeline that runs entirely locally. It takes meeting recordings, made
 
 **Status: work in progress, in daily production use since early July 2026.** Five milestones passed and closed, each with a written pass gate and a checkpoint document. The bet the earlier version of this page was still waiting on... that speaker-attributed processing could beat the simple path on real meetings and be promoted to production... has since paid off. Details below, including the parts that didn't work.
 
+**Working code:** the phone-recording ingestion boundary is now available as a
+separate Apache-2.0 project:
+[meetingintel-phone-ingest](https://github.com/sharantulsiani-ui/meetingintel-phone-ingest).
+It retrieves segmented recorder files, waits for stable uploads, prevents
+duplicates, asks a human how chunks should be grouped, and emits canonical
+audio for any transcription pipeline.
+
 ## What it produces
 
 The daily brief is the whole point: one short read over morning coffee instead of replaying hours of calls. Here's the shape of it (illustrative sample, fictional names and deals... the real ones stay private):
@@ -34,17 +41,32 @@ Behind that sits a detailed per-meeting note (people, companies, deal signals, w
 
 Works: laptop-recorded 1:1 meetings run end to end every day... capture, transcript, who-said-what, intelligence note, daily brief. The diarized path is now the normal one, promoted after it won its quality gate on real meetings. The old flat path stays as a labelled fallback.
 
-Phone recordings: the lane is built and the end-to-end proof on a real recording has passed, in isolation, without touching production. What's left is unglamorous and is the active priority... making the phone-to-laptop file fetch reliable enough to trust daily.
+Phone recordings: the in-person lane now works end to end. Scheduled
+phone-to-laptop delivery has been proven on the real Mac workflow, and the
+operator can review, join, separate or discard recorder chunks before choosing
+whether to process exactly the normalized meeting. The reusable ingestion
+boundary has been extracted into the working-code repository linked above.
 
-Not yet: group calls (shadow mode only, lower confidence bar on separating speakers), and the source code isn't published here yet.
+Not yet: group calls remain outside the production claim, and the complete
+private MeetingIntel pipeline is not published. The public code is deliberately
+limited to the reusable phone-ingestion boundary.
 
 One real limitation, stated plainly because it's the kind of thing that usually gets buried: **the phone lane records in-person conversations only. It does not capture phone calls**, cellular or VoIP. That's a coverage gap for the conversations that never touch a laptop, and I haven't measured how big it is yet. The next test is bounded... try the phone's native dialer recording, with consent, and see if it clears the quality bar. If it doesn't, that's a separate capture lane and a separate decision. What I'm not going to do is reach for an unverified call-recording app or work around the OS to close it faster.
 
 ## Repository status
 
-This documents a working personal system I use in my daily workflow. Its not packaged as an installable app, and isn't trying to be one yet.
+This documents a working personal system I use in my daily workflow. The full
+system is not packaged as an installable app. Its first reusable working
+component is published separately as
+[meetingintel-phone-ingest](https://github.com/sharantulsiani-ui/meetingintel-phone-ingest).
 
-The operational system contains private recordings, transcripts, identity mappings, personal context and confidential business information. All of that stays in a separate private repository and will not be published. What I've made public is what I am focused on: the system design, the operating rules and quality gates, plus sanitized control documents, current limitations and the roadmap. The source code lands after a privacy pass (machine paths, personal specifics). Documents are the thing in my wheelhouse, so the docs first approach is as planned.
+The operational system contains private recordings, transcripts, identity
+mappings, personal context and confidential business information. All of that
+stays in a separate private repository and will not be published. This
+repository remains the system design, operating rules, quality gates, current
+limitations and roadmap. Reusable code is extracted into fresh-history
+repositories only after a privacy and dependency pass; the private repository
+and its history are never made public.
 
 ## Who wrote what
 
@@ -120,11 +142,17 @@ Speaker identification is genuinely unreliable at the source. The fix wasn't dem
 
 ## Where this is heading
 
-- **Phone recordings.** Most of my conversations don't happen at a laptop, they happen on calls and in rooms. The lane is built, admitted to production, and the end-to-end proof on a real recording has passed in isolation. What's active now is making the fetch from phone to laptop reliable, which is the least interesting problem here and the one standing between this and daily use. In-person only for now, see the limitation above.
+- **Phone recordings.** The in-person phone lane and scheduled delivery are now
+  working in daily use. The reusable retrieval, settlement, chunk-review and
+  normalization boundary is published as
+  [meetingintel-phone-ingest](https://github.com/sharantulsiani-ui/meetingintel-phone-ingest).
+  Cellular and VoIP call capture remain outside the supported lane.
 - **Self notes.** Same pipeline, different input: voice memos to myself. After a meeting I couldn't record (no consent, no setup), or when a thought or learning pops up mid-day, I talk into the phone and it lands in the same intelligence flow as everything else. Planned, not built yet.
 - **Group calls.** Working in shadow mode, but group speaker-separation has a lower confidence bar, so it stays out of production until it earns its own evidence gate.
 - **Plenty more in the parking lot.** Every parked idea has a written trigger for when it comes back. The rule is the trigger promotes it, not my enthusiasm on a random Tuesday.
 
 ## License
 
-Read it, learn from it, share it with credit. Not open source though: no commercial use and no modified redistribution without permission. Details in [LICENSE.md](LICENSE.md).
+This case-study repository remains under its existing read/share licence.
+The working phone-ingestion code is separately available under Apache-2.0.
+Details are in each repository's licence file.
