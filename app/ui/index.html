@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>MeetingIntel · Your meeting inbox</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="MeetingIntel home"><span class="brand-mark" aria-hidden="true">m<span>i</span></span><span>MeetingIntel<small>PRIVATE · ON THIS MAC</small></span></a>
+    <nav aria-label="Main navigation"><button id="inbox-tab" class="nav-button active" aria-current="page">Meetings</button><button id="learning-tab" class="nav-button">Activity & improvements</button></nav>
+    <button id="record-button" class="button secondary"><span class="record-dot" aria-hidden="true"></span>Record in Terminal</button>
+  </header>
+  <main>
+    <div class="page-heading"><div><p class="eyebrow" id="page-eyebrow">YOUR LOCAL WORKSPACE</p><h1 id="page-title">Every meeting. One clear next step.</h1><p class="subtitle" id="page-subtitle">See what was saved, what is ready, and what needs attention.</p></div><button id="refresh-button" class="button ghost">Refresh</button></div>
+    <div id="connection" class="notice" role="status" hidden></div>
+    <div id="warnings" role="status"></div>
+    <div id="operation" class="operation" role="status" hidden></div>
+    <section id="inbox-view" class="workspace" aria-label="Meeting inbox">
+      <aside class="inbox-panel"><div class="list-heading"><h2>Your recordings</h2><span id="meeting-count" class="count">—</span></div><div id="meeting-list" class="meeting-list"><p class="empty">Reading local meeting evidence…</p></div><p class="panel-footer">Refreshing observes local state. It does not start processing or download recordings.</p></aside>
+      <article id="meeting-detail" class="detail-panel" aria-live="polite"><div class="empty-detail"><span class="empty-icon" aria-hidden="true">≋</span><h2>Your next step starts here</h2><p>Select a recording to see its saved audio, transcript, report and next action.</p></div></article>
+    </section>
+    <section id="learning-view" hidden aria-label="Activity and improvements"></section>
+    <footer class="page-footer"><span>Local processing. Original recordings retained.</span><span>Terminal remains available for recording, grouping and recovery.</span></footer>
+  </main>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title"><div class="dialog-content"><p class="eyebrow">EXACT RECORDING</p><h2 id="confirm-title">Process this recording?</h2><p id="confirm-source"></p><p id="confirm-explanation" class="subtle"></p><div class="dialog-actions"><button id="confirm-cancel" class="button secondary">Not now</button><button id="confirm-submit" class="button primary">Process this recording</button></div></div></dialog>
+  <dialog id="handoff-dialog" aria-labelledby="handoff-title"><div class="dialog-content"><p class="eyebrow">CONTINUE IN TERMINAL</p><h2 id="handoff-title">Use the existing guided workflow</h2><p id="handoff-explanation"></p><code id="handoff-command" class="command"></code><p class="subtle">This command is not run by the browser. Return here and refresh when you finish.</p><div class="dialog-actions"><button id="handoff-close" class="button secondary">Close</button><button id="handoff-copy" class="button primary">Copy command</button></div></div></dialog>
+  <dialog id="artifact-dialog" class="artifact-dialog" aria-labelledby="artifact-title"><div class="artifact-heading"><div><p class="eyebrow">SAVED LOCAL ARTIFACT</p><h2 id="artifact-title">Report</h2></div><button id="artifact-close" class="button secondary">Close</button></div><pre id="artifact-text"></pre></dialog>
+</body>
+</html>

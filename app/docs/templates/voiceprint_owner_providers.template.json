@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "manifest_type": "voiceprint_owner_providers",
+  "evaluation_id": "opaque-evaluation-id",
+  "evaluation_expires_at": "2099-01-01T00:00:00Z",
+  "providers": [
+    {
+      "provider_id": "pyannote-community1-baseline",
+      "command": ["/absolute/private/provider-runtime/bin/provider-command"],
+      "model_asset": "/absolute/private/gate4-root/models/community1"
+    }
+  ]
+}

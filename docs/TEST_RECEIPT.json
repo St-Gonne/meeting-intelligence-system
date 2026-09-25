@@ -1,0 +1,207 @@
+{
+  "date": "2026-09-25",
+  "python": "3.11",
+  "os": "macOS arm64",
+  "modules": {
+    "test_audio_first_meeting_source": {
+      "tests": 29,
+      "result": "OK"
+    },
+    "test_context_pack": {
+      "tests": 19,
+      "result": "OK"
+    },
+    "test_diarized_layer2_shadow": {
+      "tests": 88,
+      "result": "OK"
+    },
+    "test_laptop_capture_admission": {
+      "tests": 4,
+      "result": "OK"
+    },
+    "test_laptop_capture_contract": {
+      "tests": 37,
+      "result": "OK"
+    },
+    "test_laptop_capture_guard": {
+      "tests": 34,
+      "result": "OK"
+    },
+    "test_laptop_capture_ingest": {
+      "tests": 18,
+      "result": "OK"
+    },
+    "test_laptop_capture_interruptions": {
+      "tests": 14,
+      "result": "OK"
+    },
+    "test_laptop_recordings_cli": {
+      "tests": 8,
+      "result": "OK"
+    },
+    "test_meetingintel_actions": {
+      "tests": 24,
+      "result": "OK"
+    },
+    "test_meetingintel_actions_review": {
+      "tests": 3,
+      "result": "OK"
+    },
+    "test_meetingintel_capture_alert": {
+      "tests": 14,
+      "result": "OK"
+    },
+    "test_meetingintel_cli": {
+      "tests": 41,
+      "result": "OK"
+    },
+    "test_meetingintel_gpu": {
+      "tests": 7,
+      "result": "OK"
+    },
+    "test_meetingintel_inbox": {
+      "tests": 18,
+      "result": "OK"
+    },
+    "test_meetingintel_inventory": {
+      "tests": 9,
+      "result": "OK"
+    },
+    "test_meetingintel_learning": {
+      "tests": 22,
+      "result": "OK"
+    },
+    "test_meetingintel_learning_scheduler": {
+      "tests": 8,
+      "result": "OK"
+    },
+    "test_meetingintel_model_policy": {
+      "tests": 5,
+      "result": "OK"
+    },
+    "test_meetingintel_pipeline": {
+      "tests": 113,
+      "result": "OK"
+    },
+    "test_meetingintel_qwen_asr_runtime": {
+      "tests": 5,
+      "result": "OK"
+    },
+    "test_meetingintel_runtime": {
+      "tests": 18,
+      "result": "OK"
+    },
+    "test_meetingintel_shadow_workflow": {
+      "tests": 30,
+      "result": "OK"
+    },
+    "test_meetingintel_ui": {
+      "tests": 31,
+      "result": "OK"
+    },
+    "test_meetingintel_voice_cli": {
+      "tests": 3,
+      "result": "OK"
+    },
+    "test_multilingual_transcription_candidate": {
+      "tests": 19,
+      "result": "OK"
+    },
+    "test_obs_capture_probe": {
+      "tests": 10,
+      "result": "OK"
+    },
+    "test_ollama_endpoint": {
+      "tests": 7,
+      "result": "OK"
+    },
+    "test_ollama_service": {
+      "tests": 21,
+      "result": "OK"
+    },
+    "test_phone_drive_fetch": {
+      "tests": 12,
+      "result": "OK"
+    },
+    "test_phone_intake_hardening": {
+      "tests": 35,
+      "result": "OK"
+    },
+    "test_phone_recording_ingest": {
+      "tests": 49,
+      "result": "OK"
+    },
+    "test_phone_recording_review": {
+      "tests": 30,
+      "result": "OK"
+    },
+    "test_shadow_artifact_sanitizer": {
+      "tests": 6,
+      "result": "OK"
+    },
+    "test_transcription_quality": {
+      "tests": 16,
+      "result": "OK"
+    },
+    "test_validate_guard_capture": {
+      "tests": 4,
+      "result": "OK"
+    },
+    "test_validate_local_reliability": {
+      "tests": 10,
+      "result": "OK"
+    },
+    "test_voiceprint_boundary": {
+      "tests": 5,
+      "result": "OK"
+    },
+    "test_voiceprint_feasibility_probe": {
+      "tests": 7,
+      "result": "OK"
+    },
+    "test_voiceprint_gate4_harness": {
+      "tests": 12,
+      "result": "OK"
+    },
+    "test_voiceprint_gate5_audio": {
+      "tests": 4,
+      "result": "OK"
+    },
+    "test_voiceprint_gate5_inbox": {
+      "tests": 5,
+      "result": "OK"
+    },
+    "test_voiceprint_gate5_preview": {
+      "tests": 2,
+      "result": "OK"
+    },
+    "test_voiceprint_owner_bakeoff": {
+      "tests": 16,
+      "result": "OK"
+    },
+    "test_voiceprint_provider_pyannote": {
+      "tests": 4,
+      "result": "OK"
+    },
+    "test_voiceprint_provider_speechbrain": {
+      "tests": 3,
+      "result": "OK"
+    },
+    "test_voiceprint_synthetic_candidate": {
+      "tests": 12,
+      "result": "OK"
+    },
+    "test_gpu_lock": {
+      "tests": 21,
+      "result": "OK"
+    },
+    "test_public_release": {
+      "tests": 4,
+      "result": "OK"
+    }
+  },
+  "total_tests": 916,
+  "models_loaded": false,
+  "gpu_tests": "Fake servers and real subprocesses; process inspection permission required.",
+  "limitations": "Synthetic tests only; not a clean-machine live-model/capture proof."
+}

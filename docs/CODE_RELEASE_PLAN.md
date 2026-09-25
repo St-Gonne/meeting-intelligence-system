@@ -1,3 +1,5 @@
+> Historical document, retained for context. The public application alpha and Voice ID source were released on 25 September 2026. See the [current README](../README.md), [setup](SETUP.md) and [validation](RELEASE_VALIDATION.md) for current public scope.
+
 # Can someone else use MeetingIntel yet?
 
 Assessment: 25 September 2026.
