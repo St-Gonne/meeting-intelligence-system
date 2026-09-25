@@ -1,11 +1,13 @@
 # License and usage
 
-Copyright (c) 2026 Sharan Tulsiani.
+## Application code and developer documentation: MIT
 
-The documentation in this repository (README, control documents, design notes) is licensed under Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0): https://creativecommons.org/licenses/by-nc-nd/4.0/
+MeetingIntel application code, including the Voice ID module, is licensed under the [MIT License](app/LICENSE.md). This covers `app/`, its tests, `scripts/`, `.github/`, `requirements-test.txt`, `README.md`, `CONTRIBUTING.md`, and the setup, Voice ID, usage learnings, release validation, source manifest, test receipt and demo screenshot materials added for the public application release under `docs/`.
 
-Plain English: you're welcome to read this, learn from it, and share it with credit. You may not sell it, republish modified versions of it, or use it inside commercial products or paid offerings without my written permission.
+You can use, modify, fork and redistribute this code, including in commercial products, subject to the MIT notice requirements. Third-party dependencies and model weights retain their own licenses. No model weights are distributed here.
 
-The source under app/, its tests, scripts/, CONTRIBUTING.md and the new SETUP, VOICE_ID, USAGE_LEARNINGS, RELEASE_VALIDATION documents are licensed under PolyForm Noncommercial 1.0.0; see app/LICENSE.md and app/NOTICE. Earlier architecture documentation retains the terms above. This is building in the open. It is not open source.
+## Earlier architecture documentation
 
-Permissions and questions: sharan.tulsiani@gmail.com
+Earlier control documents and design notes retain Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0): https://creativecommons.org/licenses/by-nc-nd/4.0/
+
+Copyright (c) 2026 Sharan Tulsiani. These earlier documents are available to read and share with credit under those terms; they are not required to reuse the MIT application code.

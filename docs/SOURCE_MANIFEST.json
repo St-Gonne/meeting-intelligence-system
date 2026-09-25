@@ -12,12 +12,12 @@
   "files": [
     {
       "path": "app/LICENSE.md",
-      "release_sha256": "c0ea4a896d2c8c394b29f9427589996db826cd501c512279ff0ed3ef48fabbe5",
+      "release_sha256": "41fa77035ffd9767cfc8f929a63f28b8829141c05506eabd9fef54ed156c453c",
       "new_public_file": true
     },
     {
       "path": "app/NOTICE",
-      "release_sha256": "5be4f67880aaebfc7bccc44dd3138e252b0462a3948be7ed75632939d65762ed",
+      "release_sha256": "a0973e38b3f1173bd1f915449add891258b63c65db03e918c10b05dfdecbdb72",
       "new_public_file": true
     },
     {
