@@ -7,6 +7,7 @@ import io
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -370,7 +371,7 @@ class OllamaMetricsTests(unittest.TestCase):
 
     def test_fresh_process_phone_default_is_qwen(self):
         command = [
-            "/opt/homebrew/bin/python3.11", "-c",
+            sys.executable, "-c",
             "import meetingintel_pipeline as p; print(p.parse_args().phone_transcription_backend)",
         ]
         completed = subprocess.run(

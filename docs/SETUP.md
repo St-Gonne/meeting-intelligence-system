@@ -51,3 +51,5 @@ The portable review API accepts your own evaluation report and model digest. The
 ## Model licensing
 
 The source license does not grant rights to model weights, OBS, rclone or dependencies. Obtain them under their own upstream terms. No hosted inference API is required by the published demo. Offline flags in optional adapters control model fetching; they are not a network sandbox.
+
+On Linux, run `.venv/bin/python scripts/test_public.py --portable`. The full suite also checks Mac-only capture, AppKit and launchd integration fixtures. Linux core/demo success is not Linux recorder support.

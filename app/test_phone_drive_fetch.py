@@ -6,6 +6,7 @@ import plistlib
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 from contextlib import redirect_stdout
 from datetime import datetime
 from pathlib import Path
@@ -15,6 +16,10 @@ import phone_drive_fetch as fetch
 
 class PhoneDriveFetchTests(unittest.TestCase):
     def setUp(self) -> None:
+        # These tests inject the command runner; no installed rclone is needed.
+        executable = patch.object(fetch, "find_rclone", return_value="/synthetic/rclone")
+        executable.start()
+        self.addCleanup(executable.stop)
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
         self.destination = self.root / "staging"

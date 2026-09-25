@@ -10,3 +10,5 @@ The application and Voice ID module are extracted into a fresh public source tre
 - Source files and extraction adaptations are recorded in [SOURCE_MANIFEST.json](SOURCE_MANIFEST.json). Publication scanning found only fictional `/Users/example` paths in negative tests; no original user paths, private email addresses or credential signatures in application source.
 
 This is a contributor alpha. Real ASR quality, microphone continuity, model provisioning and a full clean-machine capture-to-report run remain unverified for adopters. Automated tests cannot establish those claims. The setup guide states the current pinned/two-server runtime assumptions explicitly.
+
+The first clean CI run exposed test-only assumptions about an installed Python path and rclone. These now use the running interpreter and an explicitly mocked executable for the fake download runner. CI runs the full suite on macOS and the portable core on Linux; Mac capture/launchd fixtures are not Linux-support evidence.

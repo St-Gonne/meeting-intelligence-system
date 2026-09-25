@@ -12,7 +12,18 @@ import tempfile
 
 root=Path(__file__).resolve().parents[1]/'app'
 failed=[]
+# Capture, launchd and AppKit integration fixtures intentionally target macOS.
+macos_modules = {
+    'test_laptop_capture_guard', 'test_laptop_capture_interruptions',
+    'test_laptop_recordings_cli', 'test_meetingintel_actions',
+    'test_meetingintel_capture_alert', 'test_meetingintel_cli',
+    'test_meetingintel_inbox', 'test_meetingintel_learning',
+    'test_meetingintel_learning_scheduler', 'test_phone_intake_hardening',
+}
 modules=sys.argv[1:] or [p.stem for p in sorted(root.glob('test_*.py'))]
+if modules == ['--portable']:
+    modules=[p.stem for p in sorted(root.glob('test_*.py')) if p.stem not in macos_modules]
+    print('Portable core suite; Mac capture/scheduler/UI integration modules run in the full macOS job.', flush=True)
 for module in modules:
     with tempfile.TemporaryDirectory(prefix='mi-public-test-') as temp:
         temp=str(Path(temp).resolve())

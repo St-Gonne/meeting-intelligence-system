@@ -25,6 +25,11 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install ffmpeg
       - run: python -m pip install -r requirements-test.txt
-      - run: python scripts/test_public.py
+      - name: Full macOS suite
+        if: runner.os == 'macOS'
+        run: python scripts/test_public.py
+      - name: Portable core suite
+        if: runner.os == 'Linux'
+        run: python scripts/test_public.py --portable
       - run: python app/demo_voice_id.py
       - run: python app/mi help

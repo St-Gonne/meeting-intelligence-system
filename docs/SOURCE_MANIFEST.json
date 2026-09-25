@@ -462,7 +462,7 @@
     },
     {
       "path": "app/test_meetingintel_pipeline.py",
-      "release_sha256": "048588d7dfa7974b12a7a11262a7cfd91838a5e990907339b1afbcb021c0d132",
+      "release_sha256": "fe82bf8f14596f92ae1a338bc4d0613236cea543aafa83e0199ece33e5b349b8",
       "source_sha256": "a45c2da9ba4d006fb1eb60388647c200f21ca1449932803c4c57d3170d4ac8a4",
       "adapted": true
     },
@@ -522,15 +522,15 @@
     },
     {
       "path": "app/test_phone_drive_fetch.py",
-      "release_sha256": "f337756dd633ccb07948a2863135bfeccb7f9cf481f0cd7f2773789e85c1a604",
+      "release_sha256": "ff1ee354f23acccfba1d3056d310061074c1d3aa1ca20b03d15f1224f526b39c",
       "source_sha256": "f337756dd633ccb07948a2863135bfeccb7f9cf481f0cd7f2773789e85c1a604",
-      "adapted": false
+      "adapted": true
     },
     {
       "path": "app/test_phone_intake_hardening.py",
-      "release_sha256": "36a42293948c292b68766154316be91738e88d9f6f2de6a79d8e8b68b2bde82f",
+      "release_sha256": "3181dcf7d3484659be9c4f0369d1fd5e8ff2b9fc8641aa5aaeeb439c1ee6310f",
       "source_sha256": "36a42293948c292b68766154316be91738e88d9f6f2de6a79d8e8b68b2bde82f",
-      "adapted": false
+      "adapted": true
     },
     {
       "path": "app/test_phone_recording_ingest.py",
