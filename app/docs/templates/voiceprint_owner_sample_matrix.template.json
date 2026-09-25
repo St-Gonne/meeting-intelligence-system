@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "template_type": "voiceprint_owner_sample_matrix",
+  "instructions": "Replace every placeholder, capture each row in a distinct capture group, then generate the executable samples manifest with absolute paths, SHA-256, size, permission, retention, and single-speaker attestations.",
+  "rows": [
+    {"sample_id": "target-enroll-phone-clean", "role": "target", "lane": "phone", "condition": "clean", "split": "enrollment"},
+    {"sample_id": "target-enroll-laptop-clean", "role": "target", "lane": "laptop", "condition": "clean", "split": "enrollment"},
+    {"sample_id": "target-calibrate-phone-noisy", "role": "target", "lane": "phone", "condition": "noisy", "split": "calibration"},
+    {"sample_id": "target-calibrate-laptop-noisy", "role": "target", "lane": "laptop", "condition": "noisy", "split": "calibration"},
+    {"sample_id": "negative-calibrate-phone-clean", "role": "negative", "lane": "phone", "condition": "clean", "split": "calibration"},
+    {"sample_id": "unknown-calibrate-laptop-clean", "role": "unknown", "lane": "laptop", "condition": "clean", "split": "calibration"},
+    {"sample_id": "target-test-phone-clean", "role": "target", "lane": "phone", "condition": "clean", "split": "test"},
+    {"sample_id": "target-test-phone-noisy", "role": "target", "lane": "phone", "condition": "noisy", "split": "test"},
+    {"sample_id": "target-test-laptop-clean", "role": "target", "lane": "laptop", "condition": "clean", "split": "test"},
+    {"sample_id": "target-test-laptop-noisy", "role": "target", "lane": "laptop", "condition": "noisy", "split": "test"},
+    {"sample_id": "negative-test-phone-noisy", "role": "negative", "lane": "phone", "condition": "noisy", "split": "test"},
+    {"sample_id": "negative-test-laptop-noisy", "role": "negative", "lane": "laptop", "condition": "noisy", "split": "test"},
+    {"sample_id": "unknown-test-phone-clean", "role": "unknown", "lane": "phone", "condition": "clean", "split": "test"},
+    {"sample_id": "unknown-test-laptop-clean", "role": "unknown", "lane": "laptop", "condition": "clean", "split": "test"}
+  ]
+}

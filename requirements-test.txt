@@ -1,0 +1,2 @@
+# Model-free waveform tests only. No torch, model download or inference.
+numpy==2.4.3

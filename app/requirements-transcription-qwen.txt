@@ -1,0 +1,7 @@
+# Isolated Qwen3-ASR runtime; install into a dedicated Python 3.11 virtualenv.
+transformers==5.17.0
+torch==2.14.0
+librosa==0.11.0
+soundfile==0.13.1
+safetensors==0.8.0
+huggingface_hub==1.31.0

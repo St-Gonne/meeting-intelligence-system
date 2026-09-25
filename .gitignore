@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.local/
+.env
+.secrets/
+*.wav
+*.m4a
+*.mkv
+*.bin
+*.pt
+*.safetensors

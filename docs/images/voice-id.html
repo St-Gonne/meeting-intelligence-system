@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8"><title>Voice ID · synthetic lifecycle</title><style>
+body{margin:0;padding:32px;background:#ecefe8;color:#eff4ed;font:16px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}main{max-width:1080px;margin:auto;background:#18342e;border-radius:16px;box-shadow:0 12px 35px #18342e22}header{padding:18px 26px;border-bottom:1px solid #ffffff22;color:#cce2d0}pre{white-space:pre-wrap;margin:0;padding:26px;font:inherit;font-size:14px}footer{padding:0 26px 24px;color:#b4cbbd;font:13px/1.5 system-ui}</style><main><header>Voice ID · synthetic lifecycle</header><pre>Voice ID / synthetic lifecycle demo
+No audio, model, network, or biometric enrollment is used.
+
+1. Enroll invented vector: pending retention
+2. SPEAKER_00: candidate, cosine=1.00
+2. SPEAKER_01: unknown, cosine=0.00
+3. Before confirmation: 0 trusted mappings
+4. Simulated confirmation, retention pending: 0 trusted mappings
+5. Simulated retention consent: 1 trusted mapping for demo-meeting
+6. Revoke retention: 0 trusted mappings; managed enrollment deleted
+
+This demonstrates consent and state transitions, not recognition accuracy.
+</pre><footer>Captured from the published source. Synthetic demo output is not model-quality evidence.</footer></main>

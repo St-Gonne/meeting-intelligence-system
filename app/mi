@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+"""Public launcher: isolate application state before importing the CLI."""
+import os
+from mi_paths import DATA
+for name, part in [('MI_RUNTIME_ROOT','runtime'), ('MI_UI_ROOT','ui'), ('MI_LEARNING_ROOT','learning')]:
+    os.environ.setdefault(name, str(DATA / part))
+from meetingintel_cli import main
+raise SystemExit(main())

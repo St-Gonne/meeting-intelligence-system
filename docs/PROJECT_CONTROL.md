@@ -1,3 +1,5 @@
+> Historical document, retained for context. The public application alpha and Voice ID source were released on 25 September 2026. See the [current README](../README.md), [setup](SETUP.md) and [validation](RELEASE_VALIDATION.md) for current public scope.
+
 <!-- Copied from the working system on 2026-07-16, refreshing the 2026-07-11 copy. This is the live contract the AI builder (Codex) works under. Nothing edited except this note and two privacy redactions: the local machine path and the Drive recorder-app folder are replaced with placeholders. -->
 
 # MeetingIntel — Project Control

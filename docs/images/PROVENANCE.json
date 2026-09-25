@@ -1,0 +1,23 @@
+{
+  "date": "2026-09-25",
+  "images": [
+    {
+      "path": "docs/images/inbox-synthetic.jpg",
+      "sha256": "0d7e77bd6f94e447272801bf9a08423592d44d631144a3ff624550d9fea0831b",
+      "data": "synthetic only",
+      "origin": "Actual demo_ui.py browser capture"
+    },
+    {
+      "path": "docs/images/terminal-help.jpg",
+      "sha256": "99cf0f10b82ba9630893346abdafa1da1b708e30ad3812980215012afa04850f",
+      "data": "synthetic only",
+      "origin": "Browser render of captured stdout; script scripts/render_terminal.py"
+    },
+    {
+      "path": "docs/images/voice-id-synthetic.jpg",
+      "sha256": "97408da1c2f6da358a6197d4eb9d9cd1a4a128d0a5df4ae6ad3ba646eb6fdaec",
+      "data": "synthetic only",
+      "origin": "Browser render of captured stdout; script scripts/render_terminal.py"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+MeetingIntel — start with mi inbox
+
+EVERYDAY USE
+  mi ui                       Open the local browser inbox
+  mi inbox                    Find a recording in Terminal
+  mi learning status          Check local usage collection and next review
+  mi record                   Record a laptop meeting; Ctrl-C stops it
+  mi sync                     Download phone recordings from Google Drive
+  mi today list               List today's Meetily sources without processing
+
+CHECK PHONE DELIVERY
+  mi sync status              Check delivery and settlement
+  mi sync scheduler status    Check the optional two-hour fetch schedule
+
+WHEN SOMETHING STOPS
+  mi recordings diagnose last Check the latest laptop capture
+  mi ollama status            Check the local analysis service
+  mi help recovery            Read the next steps before retrying
+
+Phone transcription uses Qwen; Gemma writes the analysis and brief.
+Laptop and Meetily transcription use Whisper. Opening the inbox is read-only;
+processing requires selecting and confirming an item. Keep the lid open while
+recording. Do not use mi all for routine recovery: it reprocesses old meetings.
+
+MORE HELP
+  mi help phone               Phone delivery, processing and Whisper override
+  mi help recordings          Laptop recording and recovery
+  mi help advanced            Legacy commands, schedules and owner Voice ID
+  mi help setup               Installation, backup and restoring another Mac
+  mi help all                 Show every topic
+
+Written guide: docs/SETUP.md
