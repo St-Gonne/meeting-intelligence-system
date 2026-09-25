@@ -1,2 +1,3 @@
-Required Notice: Copyright 2026 ST.
-Application source and its accompanying developer documentation are licensed under PolyForm Noncommercial 1.0.0.
+Copyright (c) 2026 ST and MeetingIntel contributors.
+MeetingIntel application source, including Voice ID, and its accompanying developer documentation are licensed under MIT. See LICENSE.md in this directory.
+Third-party dependencies and model weights retain their own licenses; model weights are not distributed here.

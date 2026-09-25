@@ -14,6 +14,6 @@ Choose an open issue, explain the narrow change, and include before/after eviden
 
 Keep source selection, model preflight, anonymous normal processing, confirmation, retention and deletion boundaries intact. Do not upload meetings, portfolio files, credentials, private paths or biometric vectors. Prefer generated fixtures for bugs. No provider should be enabled or model downloaded simply by importing a module or opening a demo.
 
-Code contributions use the code's PolyForm Noncommercial terms. The separate phone ingestion toolkit is Apache-2.0. Please check the license scope before reusing code in a commercial application.
+Code contributions use MIT, including contributions to Voice ID. Commercial reuse is permitted under the MIT terms. See [license scope](LICENSE.md) for earlier architecture documents and third-party materials. The separate phone ingestion toolkit is Apache-2.0.
 
 On Linux, run `.venv/bin/python scripts/test_public.py --portable`. The full suite also checks Mac-only capture, AppKit and launchd integration fixtures. Linux core/demo success is not Linux recorder support.
