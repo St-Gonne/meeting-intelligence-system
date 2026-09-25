@@ -9,6 +9,14 @@ meetings, so this repository publishes its design rather than the full applicati
 the Apache-2.0 toolkit for downloading, checking and grouping split phone recordings.
 It can prepare audio for a separate transcription pipeline.
 
+## Can I run the full application?
+
+Not from this repository yet. The private app is now substantial enough to prepare
+an Apple Silicon developer alpha. The main gaps are a clean install, portable
+configuration, generic prompts and optional Voice ID setup. See the
+[code-release assessment](docs/CODE_RELEASE_PLAN.md) for what exists and what still
+needs to be done. The phone toolkit remains the runnable public part today.
+
 ## What changed by September 2026
 
 The private system has moved beyond the July architecture snapshot:
@@ -24,8 +32,9 @@ The private system has moved beyond the July architecture snapshot:
   integrations are not included in the public phone toolkit.
 - An explicit owner voice-review workflow exists locally. Automatic naming and
   enrollment of other people remain outside the accepted scope.
-- The latest local work coordinates GPU use between applications. Joint GPU
-  acceptance remains an active blocker; this page does not claim it is complete.
+- The latest local work coordinates GPU use between applications. Joint synthetic
+  caller checks passed; shared-runtime activation gates remain open in the latest
+  receipt. This page does not claim live activation is complete.
 
 These are summaries of local project records, not a public release or an
 independently reproduced installation. The public toolkit has its own tests,
