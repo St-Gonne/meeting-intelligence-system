@@ -1,5 +1,7 @@
 # MeetingIntel
 
+[![Build checks](https://github.com/St-Gonne/meeting-intelligence-system/actions/workflows/public-source.yml/badge.svg)](https://github.com/St-Gonne/meeting-intelligence-system/actions/workflows/public-source.yml)
+
 I built this because recording a meeting was easy. Reliably getting from the recording to something I could use was much harder.
 
 MeetingIntel records on a Mac, brings in phone recordings, transcribes them locally and turns them into a detailed report and a shorter daily brief. The inbox shows what actually exists at each step, so a saved recording does not get confused with a finished report.
@@ -30,6 +32,13 @@ python3.11 app/demo_voice_id.py
 ```
 
 This exercises enrollment, a candidate match, per-meeting confirmation, separate retention consent and revocation using invented vectors. It proves the state transitions; it is **not an accuracy demonstration**. [Voice ID module and API →](docs/VOICE_ID.md)
+
+## Give it one first run
+
+[Walk through the inbox and Voice ID demo](docs/FIRST_RUN.md), then share where
+setup or the wording got in your way. A failed first run is useful feedback too.
+For a code change, [start with one scoped issue](https://github.com/St-Gonne/meeting-intelligence-system/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+If this is useful, star it to follow along or fork it to try a change.
 
 ## What is included
 
