@@ -1,0 +1,43 @@
+name: First-run report
+description: Tell us whether the public demo worked on your machine, or where it stopped.
+title: "First run: "
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for trying it. Invented demo data only. Never attach real statements, recordings, voiceprints, credentials or a token-bearing URL. Remove usernames and local paths from errors."
+  - type: input
+    id: environment
+    attributes:
+      label: Computer and runtime versions
+      placeholder: macOS / Linux, Python version, and Node version for MoneyMoney
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Release or commit
+      description: Run git rev-parse --short HEAD in the checkout.
+    validations:
+      required: true
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: How far did you get?
+      options:
+        - Demo opened and walkthrough completed
+        - Demo opened but something was confusing
+        - Installation or startup failed
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What happened?
+      description: Which command or step? What did you expect, and what appeared? A short sanitized error is enough.
+    validations:
+      required: true
+  - type: input
+    id: time
+    attributes:
+      label: Rough time to the first useful screen
+      placeholder: e.g. 5 minutes, including dependency installation

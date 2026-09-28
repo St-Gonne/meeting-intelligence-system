@@ -2,7 +2,7 @@
 
 ## Application code and developer documentation: MIT
 
-MeetingIntel application code, including the Voice ID module, is licensed under the [MIT License](app/LICENSE.md). This covers `app/`, its tests, `scripts/`, `.github/`, `requirements-test.txt`, `README.md`, `CONTRIBUTING.md`, and the setup, Voice ID, usage learnings, release validation, source manifest, test receipt and demo screenshot materials added for the public application release under `docs/`.
+MeetingIntel application code, including the Voice ID module, is licensed under the [MIT License](app/LICENSE.md). This covers `app/`, its tests, `scripts/`, `.github/`, `requirements-test.txt`, `README.md`, `CONTRIBUTING.md`, and the setup, first-run, Voice ID, usage learnings, release validation, source manifest, test receipt and demo screenshot materials added for the public application release under `docs/`.
 
 You can use, modify, fork and redistribute this code, including in commercial products, subject to the MIT notice requirements. Third-party dependencies and model weights retain their own licenses. No model weights are distributed here.
 
