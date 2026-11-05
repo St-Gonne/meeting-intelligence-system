@@ -52,13 +52,13 @@ class CanaryTests(unittest.TestCase):
             self.assertEqual(str(binary_dir / 'ffmpeg'), shutil.which('ffmpeg'))
             self.assertEqual(str(binary_dir / 'ffprobe'), shutil.which('ffprobe'))
             return 0
-        with patch.dict(os.environ, {'PATH':'/usr/bin:/bin', 'MI_CANARY':'1'}), \
+        with patch.dict(os.environ, {'PATH':str(self.root / 'empty-bin'), 'MI_CANARY':'1'}), \
              patch.object(Path, 'home', return_value=self.root), \
              patch.object(canary.gpu_lock, 'assert_child'), \
              patch.object(canary.signal, 'signal'), patch.object(canary.signal, 'alarm'), \
              patch.object(canary, '_checks', side_effect=checks):
             self.assertEqual(0, canary.worker(run, 'phone'))
-            self.assertEqual('/usr/bin:/bin', os.environ['PATH'])
+            self.assertEqual(str(self.root / 'empty-bin'), os.environ['PATH'])
 
     def test_busy_and_uncertain_residency_skip_with_no_retry(self):
         with patch.object(canary.runtime, 'status', return_value={'active': True}), patch.object(canary.gpu_lock, 'Session') as session:

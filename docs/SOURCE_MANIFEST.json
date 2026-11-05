@@ -484,7 +484,7 @@
       "path": "app/test_meetingintel_canary.py",
       "source_sha256": "25678cded752ff4de988649c0957e350c78ae37287f81b119bdf665a00d60164",
       "adapted": false,
-      "release_sha256": "998f15542cd886d8a68de4ef56c9169d05c0a03dafba2072a0bccb7c1e61a43a"
+      "release_sha256": "950a30977091b1307658f3c8875cf202a5fbcb7158ea26cce1ca87d8ff1910c7"
     },
     {
       "path": "app/test_meetingintel_capture_alert.py",
