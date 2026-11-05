@@ -380,5 +380,17 @@
     "skipped": 0,
     "result": "OK",
     "runtime": "Existing installed upstream Whisper/diarization environment; synthetic assignment/export only"
+  },
+  "scope": "Earlier local full-suite receipt; current-head GitHub platform checks are authoritative for the final release.",
+  "subsequent_focused_checks": {
+    "test_public_setup": {
+      "tests": 8,
+      "result": "OK"
+    },
+    "test_public_release": {
+      "tests": 4,
+      "result": "OK"
+    },
+    "purpose": "Consistent private asset layout and public calibration guard after the original full run"
   }
 }

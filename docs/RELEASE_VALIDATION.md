@@ -1,8 +1,10 @@
 # Public refresh validation — 5 November 2026
 
-The updated source passes the full macOS synthetic suite: **1,049 tests in 61
+Local validation completed a **1,049-test full macOS synthetic run in 61
 modules**, with five optional upstream-runtime cases skipped in the lightweight
-environment. The full **13-case speaker assignment/export integration module**
+environment. A later private-asset layout regression is separately covered by
+the eight-case public setup module; the current full suite contains 1,050 cases.
+GitHub platform checks validate the final PR head. The full **13-case speaker assignment/export integration module**
 was also run against the installed upstream runtime and passed without skips.
 No real audio or model inference was used. Exact counts are in TEST_RECEIPT.json.
 
