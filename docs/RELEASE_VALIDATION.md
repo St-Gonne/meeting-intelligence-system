@@ -8,7 +8,10 @@ No real audio or model inference was used. Exact counts are in TEST_RECEIPT.json
 
 The refresh adds speaker/recovery/Qwen/queue changes, portable settings, explicit
 backend choice, standalone/shared service configuration, and onboarding guidance.
-Single-endpoint GPU tests use fake servers and real process/lock lifecycle checks;
+CI pins Ubuntu 24.04 and macOS 15 Intel for reproducible portable/full synthetic
+checks. These model-free checks do not establish Intel Mac inference support;
+full processing still targets Apple Silicon. Single-endpoint GPU tests use fake
+servers and real process/lock lifecycle checks;
 existing coordinated-service and per-owner calibration checks remain covered.
 The initial focused extraction checks caught and fixed a read-only lifecycle
 adaptation and test fixture path assumptions before the full passing run.
