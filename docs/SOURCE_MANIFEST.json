@@ -297,7 +297,7 @@
     },
     {
       "path": "app/mi_paths.py",
-      "release_sha256": "721008c1a08d942b887eeaff191353eb28200dbbcfbeb1c2f3f61c938bebce01",
+      "release_sha256": "193317b035ec4b655b1edf6e3664aaad9d87b3a68b870b042c1d05bf3cb75d91",
       "new_public_file": true
     },
     {
@@ -686,7 +686,7 @@
     {
       "path": "app/test_public_setup.py",
       "new_public_file": true,
-      "release_sha256": "2cddb6bb2c377f3631222e56e443588a97245acab221b0b8fc975347f0361cc2"
+      "release_sha256": "0605178a57e66e7b388bb86f805cbd273065d8d4d3448d2c2f04d18e3ca5f77d"
     },
     {
       "path": "app/test_shadow_artifact_sanitizer.py",

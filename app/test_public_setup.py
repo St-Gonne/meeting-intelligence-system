@@ -45,6 +45,14 @@ class PublicSetupTests(unittest.TestCase):
         self.assertEqual({'http://127.0.0.1:11435':{'meetingintel','meetingintel:latest'}},
             gpu_lock._owned({'owner':'meetingintel','endpoints':list(gpu_lock.SINGLE_ENDPOINTS)}))
 
+    def test_voice_review_and_automatic_matching_share_asset_layout(self):
+        with patch.dict(os.environ, {'MI_VOICE_ROOT':'/private/synthetic-voice-root'}):
+            state=mi_paths.public_path('home/Library/Application Support/MeetingIntel/voiceprint-gate5')
+            report=mi_paths.public_path('home/Library/Application Support/MeetingIntel/voiceprint-gate4/voiceprint_owner_bakeoff_report.json')
+            model=mi_paths.public_path('home/Library/Application Support/MeetingIntel/voiceprint-gate4/models/community1-embedding.bin')
+        self.assertEqual(state.parent / 'voiceprint-gate4',report.parent)
+        self.assertEqual(report.parent / 'models',model.parent)
+
     def test_backend_choice_and_timezone_are_explicit(self):
         with patch.dict(os.environ, {'MI_TRANSCRIPTION_BACKEND':'whisper','MI_TIMEZONE':'America/New_York'}):
             self.assertEqual('legacy',mi_paths.transcription_backend())

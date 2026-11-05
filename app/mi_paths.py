@@ -35,7 +35,7 @@ def public_path(value: str) -> Path:
     if root == 'home':
         if tail.startswith('Library/Application Support/MeetingIntel/voiceprint-'):
             private = Path(os.environ.get('MI_VOICE_ROOT', str(Path.home() / 'Library/Application Support/MeetingIntel-public')))
-            return private / tail.split('/')[-1]
+            return private / tail.removeprefix('Library/Application Support/MeetingIntel/')
         if tail == 'homebrew' or tail.startswith('homebrew/'):
             prefix = Path(os.environ.get('HOMEBREW_PREFIX', '/opt/homebrew'))
             suffix = tail.removeprefix('homebrew').lstrip('/')
