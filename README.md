@@ -10,6 +10,12 @@ This is an early public application for people comfortable with Python and local
 models, including people using a coding AI to help with setup. Demos work without
 models or accounts. Real processing needs your own tools, models and permissions.
 
+**Security status (6 November):** dependency fixes are in progress. The shared
+Whisper speaker-processing runtime still has unresolved Torch/Transformers
+advisories, including when Qwen transcribes. Demos remain available; full runtime
+setup is not security-cleared. Read [dependency status](docs/DEPENDENCY_SECURITY.md)
+before installing.
+
 ![The actual inbox with invented recording states](docs/images/inbox-synthetic.jpg)
 
 *The screenshot shows the synthetic demo. Processing is disabled in that demo.*

@@ -7,7 +7,8 @@
     "owner-local calibration",
     "single-service public GPU admission",
     "explicit Qwen/Whisper selection",
-    "AI-assisted setup and phone onboarding"
+    "AI-assisted setup and phone onboarding",
+    "2026-11-06 compatible dependency security updates and explicit ML blocker"
   ],
   "files": [
     {
@@ -35,12 +36,12 @@
     {
       "path": "app/config/requirements-qwen-snapshot.txt",
       "new_public_file": true,
-      "release_sha256": "c7ab0683a1eb633dd0e5a97c48650aaef2faa2a80c12b962ae1ce57669bb9e3b"
+      "release_sha256": "ed6238de7a5cfed743f9cfbfc38953764bfec3aff014c26f5fcd969e2a67148e"
     },
     {
       "path": "app/config/requirements-whispermlx-snapshot.txt",
       "new_public_file": true,
-      "release_sha256": "908eb10f4d391ab0b8a2ced94a0604e95ef288c3a1d3dbf9884772a5ee71c708"
+      "release_sha256": "9560a29924f19535d00a111614590cf51da7b4763e0ccc8ac7ad677b3eaebe19"
     },
     {
       "path": "app/config/runtime-versions.json",
@@ -876,6 +877,16 @@
       "path": "scripts/check_public_tree.py",
       "new_public_file": true,
       "release_sha256": "401e25e9d12fd62911ac73ceb7096a436e12e36ac43a02b8577c59d22cb9ecd3"
+    },
+    {
+      "path": "SECURITY.md",
+      "release_sha256": "8a2124e3227e778be7f13442106bc7e24a867d790311eaad215b0a438a55b8d8",
+      "new_public_file": true
+    },
+    {
+      "path": "docs/DEPENDENCY_SECURITY.md",
+      "release_sha256": "5684af8eb3401d6d0f6d39348f31fcf4683e7b9fb0bc64c499ffe380d6e2160a",
+      "new_public_file": true
     }
   ]
 }
