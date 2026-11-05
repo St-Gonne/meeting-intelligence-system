@@ -139,7 +139,7 @@
       "path": "app/meetingintel_canary.py",
       "source_sha256": "8c3338fc874f62d527f0d02730408bca5767914f75becf9900add91c4329ebe2",
       "adapted": false,
-      "release_sha256": "86757d42ee56b1c526a96943192d5aa6c56bd1b5506e6bb85acaada6cb68af00"
+      "release_sha256": "b5ae6c7ae9d6c6dc873ca1822562de829cf36c795ec1cf3816a780ff05cc454f"
     },
     {
       "path": "app/meetingintel_capture_alert.py",

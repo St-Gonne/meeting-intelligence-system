@@ -83,7 +83,7 @@ def due():
             return {'status': 'unverified_build'}
         if runtime.status()['active']:
             return {'status': 'deferred_busy'}
-        if any(gpu_lock.loaded(endpoint) != [] for endpoint in gpu_lock.DEFAULT_ENDPOINTS):
+        if any(gpu_lock.loaded(endpoint) != [] for endpoint in gpu_lock.runtime_endpoints()):
             return {'status': 'deferred_gpu'}
         fd = runtime._open_file(root, 'schedule.lock', create=True)
         try:
