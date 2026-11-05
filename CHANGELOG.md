@@ -18,7 +18,7 @@
   completed-source skipping, status/resume and separate failed-retry approval.
 - Default public GPU admission to the one MeetingIntel service on 11435. Retain
   explicit shared mode and process/lock/cleanup checks.
-- Add saved user settings, timezone configuration, a read-only setup checker,
+- Add saved user settings, explicit source-timezone validation, a read-only setup checker,
   AI onboarding, model/dependency commands, phone setup, tutorial and command sheet.
 - Include optional owner presentation after anonymous analysis, separate machine
   provenance and per-meeting revocation. New installs remain disabled; new owners

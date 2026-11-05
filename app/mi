@@ -25,8 +25,9 @@ try:
     if selected:
         os.environ['MI_TRANSCRIPTION_BACKEND'] = selected[0]
     sys.argv[1:] = arguments
-    from mi_paths import DATA, transcription_backend
+    from mi_paths import DATA, transcription_backend, configured_timezone
     transcription_backend()
+    configured_timezone()
 except (ValueError, OSError) as error:
     print('Setup configuration: ' + str(error), file=sys.stderr)
     raise SystemExit(2)

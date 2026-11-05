@@ -107,12 +107,15 @@ actual absolute paths, for example:
   "MI_QWEN_MODEL_DIR": "/absolute/huggingface/hub/models--Qwen--Qwen3-ASR-1.7B-hf/snapshots/bcd2b5b7f32b480ab5790554cfa8347f246a14f3",
   "MI_TRANSCRIPTION_BACKEND": "qwen",
   "MI_GPU_MODE": "standalone",
-  "MI_TIMEZONE": "Europe/London"
+  "MI_TIMEZONE": "Asia/Kolkata"
 }
 ```
 
-Select your actual timezone. The compatibility default is Asia/Kolkata; source-day
-fields retain their existing schema names. MI_DATA_ROOT contains private outputs,
+The existing recording contracts require Asia/Kolkata (+05:30), including phone
+filename timestamps. Other timezones are rejected explicitly rather than producing
+invalid canonical sources. Have the AI explain this before setup; a recorder in
+another timezone needs a separately validated import path. Source-day fields
+retain their existing schema names. MI_DATA_ROOT contains private outputs,
 state, staging, canonical input and capture files. Keep it outside Git/cloud sync,
 with private permissions and a separate backup. MI_VOICE_ROOT can select a separate
 private, non-repository/non-cloud parent for optional voice enrollment; its default

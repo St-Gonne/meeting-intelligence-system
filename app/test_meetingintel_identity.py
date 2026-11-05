@@ -140,6 +140,9 @@ class IdentityWorkerTests(unittest.TestCase):
     def setUp(self):
         controlled = patch.dict(os.environ, {"HOMEBREW_PREFIX": "/nonexistent/synthetic-homebrew"})
         controlled.start(); self.addCleanup(controlled.stop)
+        roots = patch('meetingintel_audio_tools._fallback_directories',
+                      side_effect=lambda: (Path.home() / 'homebrew/bin',))
+        roots.start(); self.addCleanup(roots.stop)
 
     def test_scheduler_path_fallback_reaches_frozen_embedding_decoder(self):
         import voiceprint_provider_pyannote as provider

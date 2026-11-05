@@ -10,6 +10,10 @@ The flow is:
 **Phone records → recorder uploads to Drive → `mi sync` downloads → files settle →
 you review grouping → canonical audio → you approve transcription and notes.**
 
+Phone filename timestamps currently use Asia/Kolkata (+05:30). If the recorder
+uses another timezone, stop before importing: a verified timezone-aware mapping
+is not included in this release. Do not relabel times or weaken source validation.
+
 ## 1. Set up and test the recorder
 
 Use the recorder's microphone/audio permissions and choose `.m4a`. Its known

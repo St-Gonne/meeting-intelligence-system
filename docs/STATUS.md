@@ -21,3 +21,7 @@ private reference media or visual-speaker experiments are distributed.
 Current guidance: README.md, AGENTS.md, AI_SETUP.md, SETUP.md, PHONE_SETUP.md,
 TUTORIAL.md, COMMANDS.md and VOICE_ID.md. Earlier PROJECT_CONTROL.md and
 CODE_RELEASE_PLAN.md under docs/ are explicitly historical.
+
+Recording metadata and phone filename timestamps currently require Asia/Kolkata.
+General timezone portability remains outside this release; unsupported settings
+fail before processing rather than creating invalid canonical sources.

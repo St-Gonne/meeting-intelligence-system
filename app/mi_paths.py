@@ -8,7 +8,10 @@ PROJECT = Path(__file__).resolve().parent
 DATA = Path(os.environ.get('MI_DATA_ROOT', str(PROJECT / '.local'))).expanduser().absolute()
 
 def configured_timezone():
-    return ZoneInfo(os.environ.get('MI_TIMEZONE', 'Asia/Kolkata'))
+    value = os.environ.get('MI_TIMEZONE', 'Asia/Kolkata')
+    if value != 'Asia/Kolkata':
+        raise ValueError('recording source contracts currently require Asia/Kolkata; other timezones need a separately validated import path')
+    return ZoneInfo(value)
 
 
 def transcription_backend() -> str:

@@ -11,6 +11,11 @@ class AudioToolUnavailable(RuntimeError):
         super().__init__(f"{tool} is unavailable")
 
 
+def _fallback_directories():
+    return (Path.home() / "homebrew/bin",
+            Path(os.environ.get("HOMEBREW_PREFIX", "/opt/homebrew")) / "bin", Path("/usr/local/bin"))
+
+
 @contextmanager
 def audio_tool_environment(tools=("ffmpeg", "ffprobe")):
     """Preserve PATH precedence; supply installed Homebrew tools when missing.
@@ -21,8 +26,7 @@ def audio_tool_environment(tools=("ffmpeg", "ffprobe")):
     if any(tool not in {"ffmpeg", "ffprobe"} for tool in tools):
         raise ValueError("unsupported audio tool")
     missing = [tool for tool in tools if not shutil.which(tool)]
-    candidates = (Path.home() / "homebrew/bin",
-                  Path(os.environ.get("HOMEBREW_PREFIX", "/opt/homebrew")) / "bin", Path("/usr/local/bin"))
+    candidates = _fallback_directories()
     fallback = next((p for p in candidates if all((p / t).is_file() and os.access(p / t, os.X_OK) for t in missing)), candidates[0])
     for tool in missing:
         binary = fallback / tool

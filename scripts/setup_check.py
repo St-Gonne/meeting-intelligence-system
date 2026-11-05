@@ -27,7 +27,7 @@ def check(*, mode='demo', phone=False, capture=False):
     try:
         configured_timezone(); timezone_ok=True
     except (ValueError, KeyError): timezone_ok=False
-    add('Timezone', timezone_ok, 'Set MI_TIMEZONE to your IANA timezone in app/.local/settings.json.')
+    add('Timezone', timezone_ok, 'Current recording source contracts require MI_TIMEZONE=Asia/Kolkata. Other phone timestamp zones need a separately validated import route.')
     backend = transcription_backend()
     if mode == 'runtime':
         add('Apple Silicon Mac', platform.system() == 'Darwin' and platform.machine() == 'arm64', 'Full processing targets Apple Silicon macOS; use demos on other systems.')

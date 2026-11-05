@@ -54,9 +54,12 @@ class PublicSetupTests(unittest.TestCase):
         self.assertEqual(report.parent / 'models',model.parent)
 
     def test_backend_choice_and_timezone_are_explicit(self):
-        with patch.dict(os.environ, {'MI_TRANSCRIPTION_BACKEND':'whisper','MI_TIMEZONE':'America/New_York'}):
+        with patch.dict(os.environ, {'MI_TRANSCRIPTION_BACKEND':'whisper','MI_TIMEZONE':'Asia/Kolkata'}):
             self.assertEqual('legacy',mi_paths.transcription_backend())
-            self.assertEqual('America/New_York',str(mi_paths.configured_timezone()))
+            self.assertEqual('Asia/Kolkata',str(mi_paths.configured_timezone()))
+        with patch.dict(os.environ, {'MI_TIMEZONE':'America/New_York'}):
+            with self.assertRaisesRegex(ValueError, 'source contracts'):
+                mi_paths.configured_timezone()
         with patch.dict(os.environ, {'MI_TRANSCRIPTION_BACKEND':'silent-fallback'}):
             with self.assertRaises(ValueError):mi_paths.transcription_backend()
 

@@ -2,7 +2,7 @@
 
 > Help me set up MeetingIntel on this computer. Read AGENTS.md, docs/STATUS.md and
 > docs/SETUP.md. Check the machine first, run the demos, then help me install only
-> the lanes I need. Use my own folders, timezone and accounts. Follow PHONE_SETUP.md
+> the lanes I need. Use my own folders and accounts; explain the supported recording timezone. Follow PHONE_SETUP.md
 > if I want phone recordings. Finish with a short tutorial, command sheet and a
 > setup receipt in my private local folder. Tell me which steps actually passed.
 

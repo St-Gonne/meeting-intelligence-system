@@ -84,7 +84,7 @@ mi --transcription-backend whisper inbox  # Explicit alternative to Qwen
 ```
 
 The launcher reads ignored `app/.local/settings.json`; your AI can configure actual
-paths, timezone and backend there. Recordings and results remain on your computer;
+paths and backend there. Recordings and results remain on your computer;
 phone uploads also live in your chosen Drive account. No meeting data, credentials,
 voice enrollments or model weights ship in the repository.
 

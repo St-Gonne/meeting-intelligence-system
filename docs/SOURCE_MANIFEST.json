@@ -133,7 +133,7 @@
       "path": "app/meetingintel_audio_tools.py",
       "source_sha256": "a9a95cb0f912f97b2cf409d1a51cfe1f173b1b85b5249e9b17f0cf0a3ce2d57a",
       "adapted": true,
-      "release_sha256": "da6a09656aca0d5b957dfce4c51a6ad56edcc4a9b6274f30cdc345d675382856"
+      "release_sha256": "a83b784ab0a9847a1d561ebe2ed9c153bb1c51b315d3ade9cba5d49b623cfccf"
     },
     {
       "path": "app/meetingintel_canary.py",
@@ -287,7 +287,7 @@
     },
     {
       "path": "app/mi",
-      "release_sha256": "b6410888789fe215ce131afe4fa517ff4e95de4c38acfafdf0ee54f544cd269c",
+      "release_sha256": "f1a1631a95fc594ce1f727c5ac67fe3316002ae496429a62250156f636446399",
       "new_public_file": true
     },
     {
@@ -297,7 +297,7 @@
     },
     {
       "path": "app/mi_paths.py",
-      "release_sha256": "193317b035ec4b655b1edf6e3664aaad9d87b3a68b870b042c1d05bf3cb75d91",
+      "release_sha256": "f3b1138ba37cbce142f6a6725f8c627fc688e5a22ca561e9132e08120f49b18f",
       "new_public_file": true
     },
     {
@@ -514,7 +514,7 @@
       "path": "app/test_meetingintel_identity.py",
       "source_sha256": "950ee8d943b1e029d874dfc9321296f2627703b6d65138f414ee43bab3768ee7",
       "adapted": true,
-      "release_sha256": "2c8063e0e83f3e8157dbb3407abc8d6ef879ae34e5a2336c61d54e6806da8e50"
+      "release_sha256": "910ed46ff971aaf934566c8519b29ce65a9e66ac9cc8478d074b011582a19038"
     },
     {
       "path": "app/test_meetingintel_inbox.py",
@@ -686,7 +686,7 @@
     {
       "path": "app/test_public_setup.py",
       "new_public_file": true,
-      "release_sha256": "0605178a57e66e7b388bb86f805cbd273065d8d4d3448d2c2f04d18e3ca5f77d"
+      "release_sha256": "237e0217ed18583441a82e94c20fbfdd3b0c7b18c27549d02610ca9f7d74f0d5"
     },
     {
       "path": "app/test_shadow_artifact_sanitizer.py",
@@ -865,7 +865,7 @@
     {
       "path": "scripts/setup_check.py",
       "new_public_file": true,
-      "release_sha256": "5204ff0a77bb52a18f6f59831d3462b985927c698018d013897896cc4acaf9dd"
+      "release_sha256": "d6cceda85ef2b8da1b4f13a0c1cbcb307b45e3fe90a5116687829f0cf3607ce8"
     },
     {
       "path": "scripts/test_public.py",
