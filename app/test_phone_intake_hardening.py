@@ -17,6 +17,10 @@ import phone_fetch_scheduler_runner as scheduler_runner
 
 class PhoneIntakeHardeningTests(unittest.TestCase):
     def setUp(self) -> None:
+        # The command runner is synthetic; no installed/account-authorized rclone is needed.
+        executable = patch.object(fetch, "find_rclone", return_value="/synthetic/rclone")
+        executable.start()
+        self.addCleanup(executable.stop)
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
         self.destination = self.root / "staging"
