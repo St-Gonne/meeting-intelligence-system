@@ -1,4 +1,5 @@
 from __future__ import annotations
+from mi_paths import configured_timezone
 
 import argparse
 import json
@@ -13,7 +14,7 @@ import meetingintel_pipeline as pipeline
 from laptop_capture_meeting_source import LaptopMeetingSource
 
 
-IST = ZoneInfo("Asia/Kolkata")
+IST = configured_timezone()
 
 
 class LaptopCaptureAdmissionTests(unittest.TestCase):

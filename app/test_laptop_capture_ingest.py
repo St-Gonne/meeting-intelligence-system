@@ -313,6 +313,53 @@ class LaptopCaptureIngestTests(unittest.TestCase):
                 result.target_root, capture_root=self.capture_root
             )
 
+    def test_operator_stop_control_loss_requires_attestation_and_preserves_manifest(self):
+        from dataclasses import replace
+        session, manifest = self._session(status="interrupted")
+        manifest["stop_reason"] = "control_lost"
+        path = session / "capture_manifest.json"
+        _write_json(path, manifest)
+        original = path.read_bytes()
+        config = self._config(session)
+        with self.assertRaises(ValueError):
+            normalize_capture(config)
+        config = replace(config, allow_operator_stop_control_loss_recovery=True)
+        with self.assertRaises(ValueError):
+            normalize_capture(config)
+        config = replace(config, operator_attested_meeting_ended_before_operator_stop=True)
+        result = normalize_capture(config)
+        self.assertEqual(original, path.read_bytes())
+        metadata_path = result.target_root / METADATA_FILENAME
+        metadata = json.loads(metadata_path.read_text())
+        self.assertEqual("control_lost", metadata["stop_reason"])
+        self.assertEqual("interrupted", metadata["capture_status"])
+        self.assertEqual("meeting_ended_before_operator_stop", metadata["operator_recovery"]["attestation"])
+        load_laptop_meeting_source(result.target_root, capture_root=self.capture_root)
+        metadata["operator_recovery"]["attestation"] = "meeting_ended_before_terminal_source_loss"
+        _write_json(metadata_path, metadata)
+        with self.assertRaises(LaptopSourceValidationError):
+            load_laptop_meeting_source(result.target_root, capture_root=self.capture_root)
+
+    def test_control_loss_recovery_rejects_uncertain_capture_and_trimming(self):
+        from dataclasses import replace
+        session, manifest = self._session(status="interrupted")
+        manifest["stop_reason"] = "control_lost"
+        path = session / "capture_manifest.json"
+        config = replace(self._config(session), allow_operator_stop_control_loss_recovery=True,
+                         operator_attested_meeting_ended_before_operator_stop=True)
+        for changes in ({"cleanup_errors": ["stop_failed"]}, {"finalizing": True},
+                        {"stop_reason": "source_lost"}, {"ended_at": None},
+                        {"source_events": [{"type": "source_lost", "at": manifest["ended_at"]}]}):
+            with self.subTest(changes=changes):
+                _write_json(path, dict(manifest, **changes))
+                with self.assertRaises(ValueError):
+                    normalize_capture(config)
+                self.assertFalse(self.ingest_root.exists())
+        _write_json(path, manifest)
+        with self.assertRaises(ValueError):
+            normalize_capture(replace(config, keep_finalized_segment_count=1))
+        self.assertFalse(self.ingest_root.exists())
+
     def test_terminal_source_loss_requires_explicit_attestation_and_preserves_truth(self) -> None:
         session, manifest = self._session(status="interrupted")
         manifest["stop_reason"] = "source_lost"

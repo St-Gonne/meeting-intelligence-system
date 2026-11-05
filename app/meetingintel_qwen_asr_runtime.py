@@ -19,14 +19,12 @@ FFMPEG = Path(str(public_path('home/homebrew/bin/ffmpeg')))
 SAMPLE_RATE = 16_000
 WINDOW_SECONDS = 60
 MIN_WINDOW_SECONDS = 30
+MIN_EOS_RETRY_WINDOW_SECONDS = 15
 MAX_NEW_TOKENS = 1_024
 LANGUAGE_CODES = {"English": "en", "Hindi": "hi"}
 
 
-def split_for_missing_eos(sample_start: int, sample_end: int) -> list[tuple[int, int, int]]:
-    """Bisect once to the admitted minimum; never accept truncated output."""
-    if sample_end - sample_start <= MIN_WINDOW_SECONDS * SAMPLE_RATE:
-        raise ValueError("qwen_runtime:generation_not_terminated_at_minimum_window")
+def bisect_window(sample_start: int, sample_end: int) -> list[tuple[int, int, int]]:
     midpoint = sample_start + (sample_end - sample_start) // 2
     return [(sample_start, midpoint, sample_start), (midpoint, sample_end, sample_start)]
 
@@ -100,6 +98,7 @@ def dependency_report(model_dir: Path) -> dict[str, object]:
         "ffmpeg_executable": FFMPEG.is_file() and os.access(FFMPEG, os.X_OK),
         "model": model,
         "policy": {"window_seconds": WINDOW_SECONDS, "minimum_window_seconds": MIN_WINDOW_SECONDS,
+                   "minimum_eos_retry_window_seconds": MIN_EOS_RETRY_WINDOW_SECONDS,
                    "split_on_missing_eos": True, "max_new_tokens": MAX_NEW_TOKENS,
                    "automatic_language": True, "do_sample": False},
     }
@@ -135,18 +134,19 @@ def transcribe_waveform(
         token_ids = ids[0].detach().cpu().tolist()
         ended_with_eos = bool(token_ids and token_ids[-1] in eos_ids)
         if not ended_with_eos:
-            try:
-                pending[0:0] = split_for_missing_eos(sample_start, sample_end)
+            # Give a capped 30-second window one more split. Only use the
+            # shorter floor for unfinished generation and retain all samples.
+            if sample_end - sample_start >= 2 * MIN_EOS_RETRY_WINDOW_SECONDS * SAMPLE_RATE:
+                pending[0:0] = bisect_window(sample_start, sample_end)
                 continue
-            except ValueError as exc:
-                atomic_json(output / "qwen_asr_failure.json", {
-                    "schema_version": 1, "status": "failed",
-                    "failure_category": "generation_not_terminated_at_minimum_window",
-                    "chunk_index": len(chunks), "sample_start": sample_start,
-                    "sample_end": sample_end, "start": sample_start / SAMPLE_RATE,
-                    "end": sample_end / SAMPLE_RATE,
-                })
-                raise ValueError("qwen_runtime:generation_not_terminated_at_minimum_window") from exc
+            atomic_json(output / "qwen_asr_failure.json", {
+                "schema_version": 1, "status": "failed",
+                "failure_category": "generation_not_terminated_at_minimum_window",
+                "chunk_index": len(chunks), "sample_start": sample_start,
+                "sample_end": sample_end, "start": sample_start / SAMPLE_RATE,
+                "end": sample_end / SAMPLE_RATE,
+            })
+            raise ValueError("qwen_runtime:generation_not_terminated_at_minimum_window")
         try:
             decoded = processor.decode(ids, return_format="parsed")
             parsed = decoded[0] if isinstance(decoded, list) and decoded else None
@@ -167,7 +167,7 @@ def transcribe_waveform(
         empty_resolution = None
         if not isinstance(text, str) or not text.strip():
             if sample_end - sample_start > MIN_WINDOW_SECONDS * SAMPLE_RATE:
-                pending[0:0] = split_for_missing_eos(sample_start, sample_end)
+                pending[0:0] = bisect_window(sample_start, sample_end)
                 continue
             text = ""
             language_name = "English"
@@ -175,7 +175,7 @@ def transcribe_waveform(
         language_resolution = "model"
         if language_name not in LANGUAGE_CODES:
             if sample_end - sample_start > MIN_WINDOW_SECONDS * SAMPLE_RATE:
-                pending[0:0] = split_for_missing_eos(sample_start, sample_end)
+                pending[0:0] = bisect_window(sample_start, sample_end)
                 continue
             language_code = "hi" if any("\u0900" <= char <= "\u097f" for char in text) else "en"
             language_resolution = "script_fallback"
@@ -197,6 +197,8 @@ def transcribe_waveform(
         }
         chunks.append(record)
         atomic_json(output / "backend_chunks.json", chunks)
+        from meetingintel_progress import worker_activity
+        worker_activity("transcription")
     return chunks
 
 
@@ -281,6 +283,9 @@ def run(
     chunks = transcribe_waveform(
         waveform, output, processor, model, torch, initial_chunks
     )
+    # A fully reused prefix generates no new windows, so the loop may not have
+    # created this run's checkpoint. Persist all validated chunks before hashing.
+    atomic_json(output / "backend_chunks.json", chunks)
     segments = [{"start": c["start"], "end": c["end"], "text": c["text"],
                  "language": c["language"]} for c in chunks]
     raw = {"text": " ".join(x["text"] for x in segments if x["text"]), "segments": segments}

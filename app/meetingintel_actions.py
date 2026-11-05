@@ -276,12 +276,19 @@ def _project(row, records):
     r = dict(row)
     record = _record(row, records)
     transcript = _safe_file((record or {}).get("transcript_path"), cli.OUTPUT_DIR)
+    import meetingintel_identity as identity
+    identified = identity.presentation(row["id"], cli.OUTPUT_DIR)
+    if identified:
+        transcript = _safe_file(identified["path"], cli.OUTPUT_DIR) or transcript
+        r.update(identity_state=identified["status"], identity_reason=identified["reason"],
+                 identity_header=identified["header"])
     staged = None if transcript else _staged_transcript(row)
     report = _safe_file((record or {}).get("layer2_report_path"), cli.OUTPUT_DIR)
     r.update(transcript_state="saved" if transcript else ("retained portion transcribed" if staged else "not verified"),
         report_state="saved" if report else "not saved", brief_state="not saved",
         can_process=row["category"] == "ready" and record is None,
         can_repair_brief=False, artifacts=[])
+    r['can_revoke_identity'] = bool(identified and identified['status'] == 'matched')
     if transcript or staged:
         r["artifacts"].append({"kind": "transcript"})
     if report:
@@ -338,7 +345,9 @@ def snapshot():
         for item in items:
             item["can_process"] = item["can_repair_brief"] = False
     items.sort(key=lambda item: item["created_at"], reverse=True)
-    return {"items": items, "warnings": warnings + operational_warnings, "coverage_warnings": warnings}
+    import meetingintel_run_health as health
+    return {"items": items, "warnings": warnings + operational_warnings, "coverage_warnings": warnings,
+            "run_health": health.summary()}
 
 
 def detail(source_id):
@@ -380,11 +389,17 @@ def _exact_row(source_id):
 
 
 def perform(action, source_id):
-    if action not in {"process", "repair_brief"}:
+    if action not in {"process", "repair_brief", "revoke_identity"}:
         raise ValueError("Unsupported action.")
     with operation_lock("processing", os.environ.get("MI_OPERATION_ID")):
         row = _exact_row(source_id)
         shown = detail(source_id)
+        if action == 'revoke_identity':
+            if not shown.get('can_revoke_identity'):
+                return {'ok': True, 'outcome': 'already_done'}
+            import meetingintel_identity as identity
+            identity.revoke(source_id, cli.OUTPUT_DIR)
+            return {'ok': True, 'outcome': 'succeeded', 'message': 'Automatic owner naming revoked for this meeting.'}
         ledger = pipeline.load_ledger(cli.LEDGER_PATH)
         if action == "repair_brief":
             record = _record(row, ledger["records"])
@@ -426,6 +441,7 @@ def perform(action, source_id):
         final = detail(source_id)
         complete = code == 0 and final["transcript_state"] == "saved" and final["report_state"] == "saved" and final["brief_state"] == "saved"
         return {"ok": complete, "outcome": "succeeded" if complete else "failed",
+                "error_code": None if complete else final.get("last_error"),
                 "message": "Processing completed." if complete else "Processing stopped. Saved artifacts remain available; check the source details."}
 
 
@@ -434,7 +450,10 @@ def artifact(source_id, kind):
     records = pipeline.load_ledger(cli.LEDGER_PATH)["records"]
     record = _record(row, records) or {}
     if kind == "transcript":
-        path = _safe_file(record.get("transcript_path"), cli.OUTPUT_DIR) or _staged_transcript(row)
+        import meetingintel_identity as identity
+        identified = identity.presentation(row["id"], cli.OUTPUT_DIR)
+        path = (_safe_file(identified.get("path"), cli.OUTPUT_DIR) or
+                _safe_file(record.get("transcript_path"), cli.OUTPUT_DIR) or _staged_transcript(row))
     elif kind == "report":
         path = _safe_file(record.get("layer2_report_path"), cli.OUTPUT_DIR)
     elif kind == "brief" and record:
@@ -453,10 +472,15 @@ def artifact(source_id, kind):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["worker"])
-    parser.add_argument("action", choices=["process", "repair_brief"])
+    parser.add_argument("action", choices=["process", "repair_brief", "revoke_identity"])
     parser.add_argument("source_id")
     parser.add_argument("--result-file", type=Path, required=True)
     args = parser.parse_args()
+    import meetingintel_progress as progress
+    try:
+        progress.start()
+    except (progress.ProgressError, OSError):
+        pass
     learning.emit("operation.started", source_id=args.source_id)
     try:
         result = perform(args.action, args.source_id)
@@ -466,7 +490,13 @@ def main():
         result = {"ok": False, "outcome": "busy", "message": "Recording or processing is already active. Try again when it finishes."}
     except Exception as exc:
         result = {"ok": False, "outcome": "failed", "message": "Action stopped safely. Check source details or use mi inbox.", "error_code": observe.safe_error(exc)}
-    learning.emit("operation." + ("succeeded" if result["ok"] else ("busy" if result["outcome"] in {"busy", "deferred"} else "failed")), source_id=args.source_id)
+    learning.emit("operation." + ("succeeded" if result["ok"] else ("busy" if result["outcome"] in {"busy", "deferred"} else "failed")), source_id=args.source_id,
+                  outcome="succeeded" if result["ok"] else result["outcome"],
+                  error_code=result.get("error_code") or (result["outcome"] if result["outcome"] in {"busy", "deferred"} else None))
+    try:
+        progress.finish("complete" if result["ok"] else ("deferred" if result["outcome"] == "deferred" else "failed"))
+    except (progress.ProgressError, OSError):
+        pass
     pipeline.atomic_write_bytes(args.result_file, json.dumps(result).encode())
     return 0 if result["ok"] else (75 if result["outcome"] == "deferred" else 1)
 

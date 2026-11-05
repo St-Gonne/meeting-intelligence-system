@@ -72,6 +72,18 @@ class Gate5InboxTests(unittest.TestCase):
         with self.assertRaises(Gate5Error):
             Gate5Inbox(Path(self.temp.name) / "missing-model", clock=self.clock, gate4_report=self.report)
 
+    def test_inspection_validates_enrollment_without_rewriting_human_state(self):
+        self.inbox.enroll_pending("owner", (1., 0.))
+        candidate = self.inbox.review({"SPEAKER_00": (1., 0.)}, meeting_id="meeting-review")[0]
+        self.inbox.confirm(candidate, operator_confirmed=True)
+        self.inbox.set_retention("owner", consent=True)
+        paths = (self.inbox.state_path, self.inbox.metadata_path, self.inbox.map_path)
+        before = {path: path.read_bytes() for path in paths}
+        inspected = Gate5Inbox(self.inbox.root, clock=self.clock, gate4_report=self.report,
+                              model_asset_sha256=GATE4_MODEL_ASSET_SHA256, maintain_state=False)
+        self.assertEqual(before, {path: path.read_bytes() for path in paths})
+        self.assertEqual(1, len(inspected.store._read_records()))
+
     def test_unknown_is_not_confirmable_and_drop_removes_state(self):
         self.inbox.enroll_pending("owner", (1.0, 0.0))
         unknown = self.inbox.review({"SPEAKER_00": (0.0, 1.0)}, meeting_id="meeting-review")[0]

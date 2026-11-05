@@ -1,4 +1,5 @@
 from __future__ import annotations
+from mi_paths import configured_timezone
 
 import hashlib
 import io
@@ -16,7 +17,7 @@ import meetingintel_pipeline as pipeline
 import phone_recording_ingest as ingest
 
 
-IST = timezone(timedelta(hours=5, minutes=30))
+IST = configured_timezone()
 
 
 class MeetingIntelInventoryTests(unittest.TestCase):

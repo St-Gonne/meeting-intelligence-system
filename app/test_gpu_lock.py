@@ -74,6 +74,16 @@ class GPUContractTests(unittest.TestCase):
             if fn(): return
             time.sleep(.03)
         self.fail('condition timeout')
+    def test_standalone_single_endpoint_runs_and_unloads_only_its_model(self):
+        with gpu.Session('meetingintel', .3, lock_path=self.lock, endpoints=(self.a.url,)) as session:
+            self.a.models=['meetingintel']
+            result=session.run([sys.executable,'-c',"print('standalone')"])
+            self.assertEqual(0,result.returncode)
+        self.assertEqual([],self.a.models)
+        self.assertEqual(['meetingintel'],self.a.unloads)
+        self.assertEqual([],self.b.unloads)
+        self.assertTrue(self.free())
+
     def test_normal_handover_and_stable_inode(self):
         with self.session() as session:
             before=self.lock.stat().st_ino
@@ -189,6 +199,11 @@ class ServerLimitTests(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0, f'p{pid}\nn127.0.0.1:{port}\n', '')
             return subprocess.CompletedProcess(command, 0, 'ollama serve ' + ('' if missing else 'OLLAMA_MAX_LOADED_MODELS=1'), '')
         return run
+    def test_standalone_checks_only_its_own_live_service_limit(self):
+        with patch.object(gpu.subprocess, 'run', side_effect=self.fake()) as run:
+            self.assertTrue(gpu.limits_verified(gpu.SINGLE_ENDPOINTS))
+        self.assertFalse(any('-iTCP:11434' in call.args[0] for call in run.call_args_list))
+
     def test_current_both_listener_environments_required(self):
         with patch.object(gpu.subprocess, 'run', side_effect=self.fake()):
             self.assertTrue(gpu.limits_verified())

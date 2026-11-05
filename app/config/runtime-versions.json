@@ -1,0 +1,17 @@
+{
+  "captured": "2026-09-16",
+  "platform": "macOS Apple Silicon",
+  "python": "3.11",
+  "ollama": "0.32.14",
+  "gemma_parent": "hf.co/unsloth/gemma-4-26B-A4B-it-qat-GGUF:UD-Q4_K_XL",
+  "approved_alias_digest": "577c70d8e8ba905b49daffcf4a2c6c908d7be73415eaace75ba4004d3cb270e0",
+  "qwen_repository": "Qwen/Qwen3-ASR-1.7B-hf",
+  "qwen_revision": "bcd2b5b7f32b480ab5790554cfa8347f246a14f3",
+  "qwen_weights_sha256": "2db53c7d81bd9b8cbc6a074e89be2c968a0d373fb4ee68bb1b1e14f7042dfee1",
+  "legacy_whisper": "mlx-community/whisper-large-v3-mlx",
+  "diarization": "pyannote/speaker-diarization-community-1",
+  "english_alignment": "WAV2VEC2_ASR_BASE_960H",
+  "hindi_alignment": "theainerd/Wav2Vec2-large-xlsr-hindi",
+  "obs": "32.2.1",
+  "ollama_endpoint": "http://127.0.0.1:11435/api/generate"
+}

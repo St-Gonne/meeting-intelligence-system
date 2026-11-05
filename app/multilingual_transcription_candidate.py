@@ -560,7 +560,9 @@ def run(
         turns = diarizer(
             str(source), min_speakers=min_speakers, max_speakers=max_speakers
         )
-        result = assign_word_speakers(turns, aligned)
+        from meetingintel_speaker_turns import project_speaker_turns, preserve_overlap_uncertainty
+        result = project_speaker_turns(preserve_overlap_uncertainty(
+            assign_word_speakers(turns, aligned), turns.to_dict("records")))
         report["phases"]["diarization_seconds"] = round(time.monotonic() - phase, 2)
         report["anonymous_speakers"] = sorted({s.get("speaker", "unknown") for s in result["segments"]})
         report["unaligned_words"] = sum("start" not in w or "end" not in w for w in result.get("word_segments", []))

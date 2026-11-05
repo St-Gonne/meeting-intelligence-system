@@ -2,6 +2,7 @@
 """Normalize ASR Voice Recorder .m4a files into durable audio-first sources."""
 
 from __future__ import annotations
+from mi_paths import configured_timezone
 from mi_paths import public_path
 
 import argparse
@@ -40,7 +41,7 @@ FULL_CHUNK_MAX_SECONDS = 901.0
 MIN_CONTINUITY_GAP_SECONDS = -1.0
 MAX_CONTINUITY_GAP_SECONDS = 5.0
 CONCAT_DURATION_TOLERANCE_SECONDS = 1.0
-IST = ZoneInfo("Asia/Kolkata")
+IST = configured_timezone()
 TIMESTAMP_PATTERN = re.compile(r"^(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$")
 
 

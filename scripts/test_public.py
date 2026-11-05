@@ -29,7 +29,8 @@ for module in modules:
         temp=str(Path(temp).resolve())
         env={**os.environ, 'HOME':temp, 'PYTHONDONTWRITEBYTECODE':'1',
              'MI_DATA_ROOT':temp+'/data', 'MI_RUNTIME_ROOT':temp+'/runtime',
-             'MI_UI_ROOT':temp+'/ui', 'MI_LEARNING_ROOT':temp+'/learning'}
+             'MI_UI_ROOT':temp+'/ui', 'MI_LEARNING_ROOT':temp+'/learning',
+             'MI_PROGRESS_ROOT':temp+'/progress', 'MI_RUN_HEALTH_ROOT':temp+'/health'}
         try:
             result=subprocess.run([sys.executable,'-B','-m','unittest',module,'-q'],cwd=root,env=env,
                                   capture_output=True,text=True,timeout=75)

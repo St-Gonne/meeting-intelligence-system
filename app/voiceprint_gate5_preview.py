@@ -7,7 +7,6 @@ source, production ledger, normal output, or Gate 5 confirmation map.
 """
 
 from __future__ import annotations
-from mi_paths import public_path
 
 import argparse
 from datetime import datetime, timezone
@@ -74,15 +73,13 @@ def _validated_source_audio(path: Path) -> Path:
     before inference and is never passed to the production pipeline.
     """
     resolved = _read_only_file(path, "selected canonical audio")
-    controlled_root = public_path("project/ingest/phone")
-    try:
-        resolved.relative_to(controlled_root.resolve())
-    except ValueError as exc:
-        raise PreviewError("selected audio is outside the controlled ingest tree") from exc
+    ingest = Path(__file__).resolve().parent / "ingest"
+    if resolved.parent.parent not in {ingest / "phone", ingest / "laptop"}:
+        raise PreviewError("selected audio is outside the controlled ingest tree")
     return resolved
 
 
-def _load_diarization(folder: Path, source_identity: str) -> tuple[dict[str, Any], list[dict[str, Any]], Path, Path]:
+def _load_diarization(folder: Path, source_identity: str, *, include_unassigned: bool = False) -> tuple[dict[str, Any], list[dict[str, Any]], Path, Path]:
     if folder.expanduser().absolute().is_symlink() or not folder.is_dir():
         raise PreviewError("diarization folder is missing or unsafe")
     manifest_path = _read_only_file(folder / "run_manifest.json", "diarization manifest")
@@ -102,10 +99,11 @@ def _load_diarization(folder: Path, source_identity: str) -> tuple[dict[str, Any
         raise PreviewError("diarization JSON has no segments")
     valid: list[dict[str, Any]] = []
     for segment in segments:
-        if not isinstance(segment, dict) or not isinstance(segment.get("speaker"), str):
+        if not isinstance(segment, dict):
             continue
-        label = segment["speaker"]
-        if LABEL_RE.fullmatch(label) is None:
+        label = segment.get("speaker")
+        unassigned = include_unassigned and (label is None or label == "UNKNOWN")
+        if not unassigned and (not isinstance(label, str) or LABEL_RE.fullmatch(label) is None):
             continue
         try:
             start, end = float(segment["start"]), float(segment["end"])
@@ -122,6 +120,12 @@ def _load_diarization(folder: Path, source_identity: str) -> tuple[dict[str, Any
 def _make_track(source_audio: Path, segments: list[dict[str, Any]], output: Path) -> float:
     """Extract one bounded label track without modifying the source audio."""
     ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        # launchd does not inherit the interactive Homebrew PATH. Reuse the
+        # local installation already used by the pinned Qwen runtime.
+        local_ffmpeg = Path.home() / "homebrew/bin/ffmpeg"
+        if local_ffmpeg.is_file() and os.access(local_ffmpeg, os.X_OK):
+            ffmpeg = str(local_ffmpeg)
     if not ffmpeg:
         raise PreviewError("ffmpeg is unavailable")
     selected: list[dict[str, Any]] = []
@@ -182,8 +186,7 @@ def _render_preview(srt_path: Path, *, named_label: str | None, display_name: st
         "# Private Gate 5 named transcript preview\n\n"
         f"Source date: {source_date}\n"
         f"Source duration: {source_duration:.3f} seconds\n"
-        "Diarization bound: 2 speakers (processing bound only; not a claim about\n"
-        "the call's actual speaker count).\n"
+        "Anonymous speaker clusters do not establish the number of people.\n"
         "Identity status: retained identity used for a measured suggestion only; "
         "this call remains unconfirmed.\n\n"
         "## Voice-match measurements\n" + "\n".join(score_lines) + "\n\n"
@@ -196,7 +199,8 @@ def _render_preview(srt_path: Path, *, named_label: str | None, display_name: st
 def run_preview(*, state_root: Path, gate4_report: Path, model_asset: Path, source_folder: Path, diarization_folder: Path, identity_id: str, meeting_id: str, consent: str, output_root: Path | None = None) -> dict[str, Any]:
     if consent != "yes":
         raise PreviewError("explicit audio evaluation consent is required")
-    source = load_audio_first_source(source_folder.expanduser().absolute())
+    from meetingintel_identity import _source
+    source = _source(source_folder.expanduser().absolute())
     manifest, segments, audio_json, srt_path = _load_diarization(diarization_folder.expanduser().absolute(), source.source_identity)
     inbox = Gate5Inbox(state_root, clock=lambda: datetime.now(timezone.utc), gate4_report=gate4_report, model_asset=model_asset)
     display_name = inbox.private_display_name(identity_id)

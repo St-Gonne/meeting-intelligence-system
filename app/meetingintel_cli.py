@@ -19,6 +19,7 @@ from typing import Callable, Iterable, MutableMapping, Sequence
 
 from meetingintel_runtime import exclusive_operation, RuntimeSafetyError, source_annotation
 import meetingintel_observe as observe
+import meetingintel_run_health as health
 from meetingintel_help import help_text
 import meetingintel_pipeline as pipeline
 import laptop_capture_guard
@@ -33,6 +34,7 @@ from laptop_capture_ingest import (
     NormalizeConfig,
     normalize_capture,
     terminal_source_loss_recovery_eligible,
+    operator_stop_control_loss_recovery_eligible,
 )
 from laptop_capture_meeting_source import (
     LaptopMeetingSource,
@@ -325,6 +327,7 @@ def _print_plan(scope: str, selected: Sequence[SourceCandidate], processed: set[
 
 @exclusive_operation("processing")
 @observe.production_attempt
+@health.attempt
 def _run_production(
     selected: Sequence[SourceCandidate],
     *,
@@ -350,6 +353,15 @@ def _run_production(
         if refresh_existing or candidate.fingerprint not in processed
     )
     if not to_run:
+        if scope.startswith("exact "):
+            try:
+                ledger = pipeline.load_ledger(LEDGER_PATH)
+                pipeline.write_delivery_briefs(OUTPUT_DIR, ledger,
+                    clock().astimezone(pipeline.IST).date(),
+                    [candidate.fingerprint for candidate in selected])
+            except (OSError, ValueError, pipeline.ProductionPersistenceError):
+                print("Daily brief repair failed. Saved records remain available; check local storage.", file=sys.stderr)
+                return 1
         print("Processed: 0")
         print(f"Already done: {already_done}")
         print("Failed: 0")
@@ -357,7 +369,8 @@ def _run_production(
     if any(candidate.source_kind == "phone_recording" for candidate in to_run):
         print(f"Phone transcription backend: {phone_transcription_backend}")
     if any(candidate.source_kind == "laptop_capture" for candidate in to_run):
-        print("Laptop transcription backend: legacy (Whisper)")
+        backend = pipeline.laptop_transcription_backend()
+        print(f"Laptop transcription backend: {backend} ({'Qwen3-ASR' if backend == 'qwen' else 'Whisper'})")
 
     if not load_secret_environment():
         print(
@@ -375,6 +388,8 @@ def _run_production(
         try:
             preflight_ollama(ollama_url)
         except OllamaUnreachable as unreachable:
+            if os.environ.get('MI_CANARY') == '1':
+                raise unreachable
             try:
                 manager.recover(ollama_url)
             except OllamaServiceError as recovery_error:
@@ -1018,7 +1033,7 @@ def run_cli(
     if command[:1] in (["help"], ["--help"], ["-h"]):
         try:
             if len(command) > 2:
-                raise ValueError("Use mi help [phone|recordings|recovery|advanced|setup|all]")
+                raise ValueError("Use mi help [queue|phone|recordings|recovery|advanced|setup|all]")
             print(help_text(command[1] if len(command) == 2 else None))
         except ValueError as exc:
             print(str(exc), file=sys.stderr)
@@ -1055,6 +1070,10 @@ def run_cli(
             terminal_isatty=terminal_isatty,
             ollama_manager=ollama_manager,
         )
+    if command[:1] == ["queue"]:
+        from meetingintel_queue import run_cli as run_queue
+        return run_queue(command[1:], clock=clock, input_func=input_func,
+            terminal_isatty=terminal_isatty, backend=phone_transcription_backend)
     if command[:1] == ["inbox"]:
         return run_inbox(
             command[1:],
@@ -1250,22 +1269,35 @@ def _offer_exact_laptop_processing(
     ollama_manager: OllamaServiceManager | None,
     later: str | None = None,
     suppress_private_paths: bool = False,
+    speaker_count: int | None = None,
 ) -> int:
     recovery = later or f"mi recordings process {source.source_identity[:12]}"
+    if speaker_count is not None:
+        recovery += f" --speakers {speaker_count}"
     if not terminal_isatty():
         print("Production processing: not started (interactive confirmation required)")
         print(f"Later: {recovery}")
         return 0
     print("")
+    if speaker_count is not None:
+        print(f"Speaker count: {speaker_count} (operator supplied for this recording)")
     print("Process exactly this meeting now?")
     print("  [y] Yes")
     print("  [n] Not now")
-    try:
-        decision = input_func("Choice: ")
-    except (EOFError, KeyboardInterrupt):
-        print("\nNot processed. Normalized source remains available.")
-        print(f"Later: {recovery}")
-        return 0
+    decision = None
+    while True:
+        try:
+            decision = input_func("Choice: ")
+        except EOFError:
+            print("\nInput closed before a choice was received.")
+            break
+        except KeyboardInterrupt:
+            print("\nProcessing confirmation interrupted.")
+            break
+        if decision == "":
+            print("Please enter y or n, then press Enter.")
+            continue
+        break
     if decision != "y":
         print("Not processed. Normalized source remains available.")
         print(f"Later: {recovery}")
@@ -1275,6 +1307,7 @@ def _offer_exact_laptop_processing(
         clock=clock,
         ollama_manager=ollama_manager,
         suppress_private_paths=suppress_private_paths,
+        **({"speaker_count": speaker_count} if speaker_count is not None else {}),
     )
 
 
@@ -1284,6 +1317,7 @@ def _run_exact_laptop_source(
     clock: Callable[[], datetime],
     ollama_manager: OllamaServiceManager | None,
     suppress_private_paths: bool = False,
+    speaker_count: int | None = None,
 ) -> int:
     production_source = pipeline.production_source_from_laptop_capture(source)
     candidate = SourceCandidate(
@@ -1295,14 +1329,16 @@ def _run_exact_laptop_source(
     ledger = pipeline.load_ledger(LEDGER_PATH)
     processed = set(ledger.get("records", {}))
     _print_plan("exact laptop recording", (candidate,), processed)
+    def process_exact(args):
+        args.diarization_speakers = speaker_count
+        return pipeline.process_explicit_laptop_sources(args, (production_source,))
+
     return _run_production(
         (candidate,),
         scope="exact laptop recording",
         processed=processed,
         clock=clock,
-        pipeline_runner=lambda args: pipeline.process_explicit_laptop_sources(
-            args, (production_source,)
-        ),
+        pipeline_runner=process_exact,
         ollama_manager=ollama_manager,
         audio_first_only=True,
         explicit_audio_first_source_folders=(source.source_folder,),
@@ -1433,8 +1469,12 @@ def _print_capture_diagnostic(session_root: Path) -> bool:
             "  next=mi recordings recover-last "
             "(only if the meeting ended before lid close/source loss)"
         )
+    elif operator_stop_control_loss_recovery_eligible(manifest, audit):
+        print("  next=mi recordings recover-last --operator-stop-control-loss")
+        print("  guidance=Only if the meeting finished before you stopped recording; explicit attestation required.")
     else:
-        print("  next=operator review required; do not normalize")
+        print("  next=No automatic recovery command is available for this capture.")
+        print("  guidance=Keep the original chunks; request assisted recovery review. Do not run normalize-last.")
     return terminal_recovery
 
 
@@ -1456,6 +1496,8 @@ def run_recordings(
     subparsers.add_parser("list")
     process_parser = subparsers.add_parser("process")
     process_parser.add_argument("selector")
+    process_parser.add_argument("--speakers", type=int, choices=range(1, 9),
+                                help="known number of speakers in this recording (1–8)")
     subparsers.add_parser("normalize-last")
     diagnose_parser = subparsers.add_parser("diagnose")
     diagnose_parser.add_argument("selector", nargs="?", default="last", choices=("last",))
@@ -1465,6 +1507,8 @@ def run_recordings(
         type=int,
         help="recover only the first N finalized chunks and preserve the rest as excluded tail",
     )
+    recover_parser.add_argument("--operator-stop-control-loss", action="store_true",
+        help="review intact control-loss capture after an operator stop; explicit attestation required")
     args = parser.parse_args(list(argv))
 
     try:
@@ -1476,9 +1520,16 @@ def run_recordings(
         if args.action == "recover-last":
             session_root = _latest_capture_session(recordings_root)
             eligible = _print_capture_diagnostic(session_root)
+            control_recovery = args.operator_stop_control_loss
+            if control_recovery:
+                recovery_manifest = load_manifest(session_root / "capture_manifest.json")
+                eligible = operator_stop_control_loss_recovery_eligible(
+                    recovery_manifest, audit_capture_session(session_root, recovery_manifest))
+                if args.keep_segments is not None:
+                    raise ValueError("operator-stop control-loss recovery must retain all finalized chunks")
             if not eligible:
                 raise ValueError(
-                    "latest capture is not eligible for terminal source-loss recovery"
+                    "latest capture is not eligible for the selected recovery policy"
                 )
             if not terminal_isatty():
                 raise ValueError("recovery requires an interactive terminal")
@@ -1492,12 +1543,13 @@ def run_recordings(
                 )
             print("")
             print(
-                "Recover only if the meeting ended before the lid was closed "
-                "or the source was lost."
+                "Recover only if the meeting finished before you stopped recording."
+                if control_recovery else
+                "Recover only if the meeting ended before the lid was closed or the source was lost."
             )
             if keep_count is None:
                 print(f"Recovery will keep all {segment_count} finalized chunks.")
-                if segment_count > 1:
+                if segment_count > 1 and not control_recovery:
                     print(
                         "If recording continued after the meeting, cancel and rerun with "
                         "--keep-segments N."
@@ -1530,8 +1582,10 @@ def run_recordings(
                     session_root=session_root,
                     capture_root=recordings_root,
                     ingest_root=ingest_root,
-                    allow_terminal_source_loss_recovery=True,
-                    operator_attested_meeting_ended_before_source_loss=True,
+                    allow_terminal_source_loss_recovery=not control_recovery,
+                    operator_attested_meeting_ended_before_source_loss=not control_recovery,
+                    allow_operator_stop_control_loss_recovery=control_recovery,
+                    operator_attested_meeting_ended_before_operator_stop=control_recovery,
                     keep_finalized_segment_count=keep_count,
                 )
             )
@@ -1611,6 +1665,7 @@ def run_recordings(
             input_func=input_func,
             terminal_isatty=terminal_isatty,
             ollama_manager=ollama_manager,
+            speaker_count=args.speakers,
         )
     except (
         LaptopSourceValidationError,
@@ -1792,6 +1847,9 @@ def run_sync(argv: Sequence[str]) -> int:
 
 def main() -> int:
     os.environ.setdefault("MI_ORIGIN", "cli")
+    if any(marker in os.environ for marker in ("CLAUDECODE", "CODEX_THREAD_ID")):
+        os.environ["MI_ACTOR"] = "agent"
+    os.environ.setdefault("MI_ACTOR", "human" if sys.stdin.isatty() else "unknown")
     try:
         return run_cli()
     except RuntimeSafetyError as exc:

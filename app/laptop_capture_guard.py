@@ -855,7 +855,11 @@ def monitor_recording(
         try:
             record_status = request_json("GetRecordStatus")
         except (GuardError, subprocess.SubprocessError, OSError):
+            # Ctrl-C also reaches the foreground control subprocess. Honor the
+            # recorded stop intent before classifying its interrupted request.
+            check_stop_requested(state)
             return "control_lost"
+        check_stop_requested(state)
         if not record_status.get("outputActive"):
             return "recording_stopped_externally"
 

@@ -477,11 +477,11 @@ class ProductionRoutingSelectionTests(unittest.TestCase):
         self.assertEqual(Path("/diag"), diarized.call_args.args[1])
         flat.assert_not_called()
 
-    def test_eligible_false_routes_to_existing_flat_path(self):
+    def test_eligible_false_keeps_speakers_in_general_analysis(self):
         args = self.selection_args()
         summary = self.eligibility_summary(("SPEAKER_00", "SPEAKER_01", "SPEAKER_02"))
         with patch.object(pipeline, "stage_diarized_eligibility", return_value=(Path("/diag"), Path("/shadow"), summary)), patch.object(
-            pipeline, "run_flat_meeting", return_value=self.selected_result("flat")
+            pipeline, "run_staged_speaker_meeting", return_value=self.selected_result("diarized_general")
         ) as flat, patch.object(pipeline, "run_diarized_production") as diarized:
             result = pipeline.select_meeting_result(
                 args,
@@ -491,7 +491,7 @@ class ProductionRoutingSelectionTests(unittest.TestCase):
                 Path("/tests/root/meeting"),
             )
 
-        self.assertEqual("flat", result.processing_mode)
+        self.assertEqual("diarized_general", result.processing_mode)
         flat.assert_called_once()
         diarized.assert_not_called()
 
@@ -537,7 +537,7 @@ class ProductionRoutingSelectionTests(unittest.TestCase):
         self.assertIn("eligibility-summary failed", result.fallback_reason)
         flat.assert_called_once()
 
-    def test_diarized_layer2_and_layer3_failures_route_to_flat_fallback(self):
+    def test_diarized_failures_keep_speakers_in_general_fallback(self):
         args = self.selection_args()
         summary = self.eligibility_summary()
         for reason in ("layer2 failed", "layer3 failed"):
@@ -549,8 +549,8 @@ class ProductionRoutingSelectionTests(unittest.TestCase):
                 side_effect=pipeline.ProcessingFallback(reason),
             ), patch.object(
                 pipeline,
-                "run_flat_meeting",
-                return_value=self.selected_result("flat_fallback", reason),
+                "run_staged_speaker_meeting",
+                return_value=self.selected_result("diarized_general_fallback", reason),
             ) as flat:
                 result = pipeline.select_meeting_result(
                     args,
@@ -560,7 +560,7 @@ class ProductionRoutingSelectionTests(unittest.TestCase):
                     Path("/tests/root/meeting"),
                 )
 
-            self.assertEqual("flat_fallback", result.processing_mode)
+            self.assertEqual("diarized_general_fallback", result.processing_mode)
             self.assertIn(reason, result.fallback_reason)
             flat.assert_called_once()
 
@@ -603,14 +603,14 @@ class ProductionRoutingSelectionTests(unittest.TestCase):
             flat.assert_called_once()
             diarized.assert_not_called()
 
-    def test_valid_summary_with_substantive_unknown_routes_flat(self):
+    def test_valid_summary_preserves_unknown_in_general_analysis(self):
         summary = self.eligibility_summary(unknown=True)
         with patch.object(
             pipeline,
             "stage_diarized_eligibility",
             return_value=(Path("/diag"), Path("/shadow"), summary),
         ), patch.object(
-            pipeline, "run_flat_meeting", return_value=self.selected_result("flat")
+            pipeline, "run_staged_speaker_meeting", return_value=self.selected_result("diarized_general")
         ) as flat, patch.object(pipeline, "run_diarized_production") as diarized:
             result = pipeline.select_meeting_result(
                 self.selection_args(),
@@ -619,7 +619,7 @@ class ProductionRoutingSelectionTests(unittest.TestCase):
                 "prompt",
                 Path("/tests/root/meeting"),
             )
-        self.assertEqual("flat", result.processing_mode)
+        self.assertEqual("diarized_general", result.processing_mode)
         flat.assert_called_once()
         diarized.assert_not_called()
 
@@ -805,7 +805,7 @@ class ProductionRoutingSelectionTests(unittest.TestCase):
 
 
 class ProductionRoutingOrchestrationTests(unittest.TestCase):
-    def test_helper_failure_reason_allowlists_missing_token_only(self):
+    def test_helper_failure_reason_allowlists_known_diagnostics(self):
         missing_token = (
             "Error: HF_TOKEN is not set. Set it in your environment before running "
             "this helper; do not place the token in the command itself.\n"
@@ -819,6 +819,13 @@ class ProductionRoutingOrchestrationTests(unittest.TestCase):
         self.assertEqual("diarization_helper:exit_17", generic)
         self.assertNotIn(unknown, generic)
         self.assertNotIn("secret-token-value", generic)
+        qwen_error = "ValueError: qwen_runtime:generation_not_terminated_at_minimum_window"
+        self.assertEqual(
+            "transcription_qwen:window_did_not_finish",
+            pipeline.sanitized_helper_failure_reason(1, f"{unknown}\n{qwen_error}\n"),
+        )
+        self.assertEqual("diarization_helper:exit_1",
+                         pipeline.sanitized_helper_failure_reason(1, f"text: {qwen_error}"))
 
     def test_missing_token_helper_failure_is_sanitized_and_attempted_once(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1292,6 +1299,8 @@ class ProductionRoutingPersistenceTests(unittest.TestCase):
             "flat_fallback",
             "flat_from_diarized_transcript",
             "flat_fallback_from_diarized_transcript",
+            "diarized_general",
+            "diarized_general_fallback",
         ]
         for mode in modes:
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
@@ -1741,7 +1750,7 @@ class M4RoutingEvidenceAndWatchTests(unittest.TestCase):
         payload = json.loads(pipeline.serialize_ledger_v2(ledger_with(record)))
         self.assertNotIn("routing_eligibility", payload["records"][record["fingerprint"]])
 
-    def test_ineligible_flat_selection_carries_snapshot_and_reasons(self):
+    def test_general_selection_keeps_ineligibility_snapshot_and_reasons(self):
         summary = valid_eligibility_summary(
             ("SPEAKER_00", "SPEAKER_01", "SPEAKER_02")
         )
@@ -1751,28 +1760,28 @@ class M4RoutingEvidenceAndWatchTests(unittest.TestCase):
             {}, datetime.fromisoformat("2026-07-05T10:00:00+05:30"), "text",
             "meeting", "fingerprint", "layer2", "prompt", Path("/meeting"),
         )
-        selected = pipeline.SelectedMeetingResult("flat", "/flat.md", {}, "flat")
+        selected = pipeline.SelectedMeetingResult("diarized_general", "/flat.md", {}, "diarized_general")
         with patch.object(
             pipeline, "stage_diarized_eligibility",
             return_value=(Path("/diag"), Path("/shadow"), summary),
-        ), patch.object(pipeline, "run_flat_meeting", return_value=selected) as flat:
+        ), patch.object(pipeline, "run_staged_speaker_meeting", return_value=selected) as flat:
             pipeline.select_meeting_result(args, *inputs)
         self.assertEqual(expected, flat.call_args.kwargs["routing_eligibility"])
         self.assertTrue(expected["ineligibility_reasons"])
         record = legacy_record()
-        record["processing_mode"] = "flat"
+        record["processing_mode"] = "diarized_general"
         record["routing_eligibility"] = expected
         persisted = json.loads(pipeline.serialize_ledger_v2(ledger_with(record)))["records"][record["fingerprint"]]
         self.assertEqual(expected, persisted["routing_eligibility"])
 
-    def test_late_diarized_failure_carries_valid_snapshot_into_flat_fallback(self):
+    def test_general_fallback_keeps_valid_routing_snapshot(self):
         args = argparse.Namespace(dry_run=False)
         inputs = (
             {}, datetime.fromisoformat("2026-07-05T10:00:00+05:30"), "text",
             "meeting", "fingerprint", "layer2", "prompt", Path("/meeting"),
         )
         selected = pipeline.SelectedMeetingResult(
-            "fallback", "/flat.md", {}, "flat_fallback", "late failure"
+            "fallback", "/flat.md", {}, "diarized_general_fallback", "late failure"
         )
         with patch.object(
             pipeline, "stage_diarized_eligibility",
@@ -1780,11 +1789,11 @@ class M4RoutingEvidenceAndWatchTests(unittest.TestCase):
         ), patch.object(
             pipeline, "run_diarized_production",
             side_effect=pipeline.ProcessingFallback("late failure"),
-        ), patch.object(pipeline, "run_flat_meeting", return_value=selected) as flat:
+        ), patch.object(pipeline, "run_staged_speaker_meeting", return_value=selected) as flat:
             pipeline.select_meeting_result(args, *inputs)
         self.assertEqual(self.snapshot, flat.call_args.kwargs["routing_eligibility"])
         record = legacy_record()
-        record["processing_mode"] = "flat_fallback"
+        record["processing_mode"] = "diarized_general_fallback"
         record["fallback_reason"] = "late failure"
         record["routing_eligibility"] = self.snapshot
         persisted = json.loads(pipeline.serialize_ledger_v2(ledger_with(record)))["records"][record["fingerprint"]]
@@ -2029,22 +2038,22 @@ class PhoneAudioFirstAdmissionTests(unittest.TestCase):
         text, _path = pipeline.flatten_staged_transcript(staged)
         self.assertEqual("second tie first tie", text)
 
-    def test_ineligible_phone_reuses_staged_text_and_selects_normal_flat_mode(self):
+    def test_ineligible_phone_reuses_staged_speakers_for_general_analysis(self):
         staged = self.make_staged_transcript(
             "1\n00:00:00,000 --> 00:00:01,000\n[SPEAKER_00]: hello there\n"
         )
         summary = valid_eligibility_summary(("SPEAKER_00", "SPEAKER_01", "SPEAKER_02"))
-        selected = pipeline.SelectedMeetingResult("summary", "/layer2.md", {}, "flat_from_diarized_transcript")
+        selected = pipeline.SelectedMeetingResult("summary", "/layer2.md", {}, "diarized_general")
         with patch.object(
             pipeline, "stage_diarized_eligibility", return_value=(staged, Path("/shadow"), summary)
-        ) as stage, patch.object(pipeline, "run_flat_meeting", return_value=selected) as flat, patch.object(
+        ) as stage, patch.object(pipeline, "run_staged_speaker_meeting", return_value=selected) as flat, patch.object(
             pipeline, "run_diarized_production"
         ) as diarized:
             result = pipeline.select_audio_first_result(self.args(), self.source, "l2", "l3")
         stage.assert_called_once()
         diarized.assert_not_called()
-        self.assertEqual("hello there", flat.call_args.args[3])
-        self.assertEqual("flat_from_diarized_transcript", flat.call_args.kwargs["processing_mode"])
+        self.assertEqual(staged, flat.call_args.args[3])
+        self.assertEqual("diarized_general", flat.call_args.kwargs.get("processing_mode", "diarized_general"))
         self.assertEqual(summary["routing_eligibility"], result.routing_eligibility or flat.call_args.kwargs["routing_eligibility"])
 
     def test_eligible_phone_reuses_same_staged_folder_and_diarized_result(self):
@@ -2093,22 +2102,31 @@ class PhoneAudioFirstAdmissionTests(unittest.TestCase):
             "model_revision": pipeline.QWEN_MODEL_REVISION,
         }, result.transcription_provenance)
 
-    def test_laptop_capture_ignores_phone_qwen_default_and_uses_legacy(self):
+    def test_laptop_capture_uses_qwen_regardless_of_phone_backend(self):
         staged = self.make_staged_transcript(
             "1\n00:00:00,000 --> 00:00:01,000\n[SPEAKER_00]: words\n"
         )
+        (staged / "run_manifest.json").write_text(json.dumps({
+            "transcription_mode": "qwen3-asr-1.7b-contiguous",
+            "candidate_stage_provenance": {"qwen_asr": {"model": {
+                "identifier": pipeline.QWEN_MODEL_IDENTIFIER,
+                "revision": pipeline.QWEN_MODEL_REVISION,
+            }}},
+        }))
         laptop = pipeline.ProductionSource(
             **{**asdict(self.source), "source_kind": "laptop_capture"}
         )
         summary = valid_eligibility_summary(("SPEAKER_00",))
-        selected = pipeline.SelectedMeetingResult("summary", "/flat.md", {}, "flat")
-        args = self.args(); args.phone_transcription_backend = "qwen"
-        with patch.object(
-            pipeline, "stage_diarized_eligibility", return_value=(staged, Path("/shadow"), summary)
-        ) as stage, patch.object(pipeline, "run_flat_meeting", return_value=selected):
-            result = pipeline.select_audio_first_result(args, laptop, "l2", "l3")
-        self.assertEqual("legacy", stage.call_args.args[3])
-        self.assertEqual("legacy", result.transcription_provenance["backend"])
+        selected = pipeline.SelectedMeetingResult("summary", "/flat.md", {}, "diarized_general")
+        for phone_backend in ("legacy", "qwen"):
+            args = self.args(); args.phone_transcription_backend = phone_backend
+            with self.subTest(phone_backend=phone_backend), patch.object(
+                pipeline, "stage_diarized_eligibility", return_value=(staged, Path("/shadow"), summary)
+            ) as stage, patch.object(pipeline, "run_staged_speaker_meeting", return_value=selected):
+                result = pipeline.select_audio_first_result(args, laptop, "l2", "l3")
+            self.assertEqual("qwen", stage.call_args.args[3])
+            self.assertEqual("qwen", result.transcription_provenance["backend"])
+            self.assertEqual(pipeline.QWEN_MODEL_REVISION, result.transcription_provenance["model_revision"])
 
     def test_malformed_staged_transcript_aborts_before_second_stage(self):
         staged = self.make_staged_transcript(
@@ -2127,21 +2145,21 @@ class PhoneAudioFirstAdmissionTests(unittest.TestCase):
         diarized.assert_not_called()
         flat.assert_not_called()
 
-    def test_late_diarized_failure_flattens_same_transcript_without_second_stage(self):
+    def test_late_diarized_failure_preserves_same_staged_speakers_without_second_stage(self):
         staged = self.make_staged_transcript(
             "1\n00:00:00,000 --> 00:00:01,000\n[SPEAKER_00]: reusable words\n"
         )
         summary = valid_eligibility_summary()
-        fallback = pipeline.SelectedMeetingResult("summary", "/flat.md", {}, "flat_fallback_from_diarized_transcript")
+        fallback = pipeline.SelectedMeetingResult("summary", "/flat.md", {}, "diarized_general_fallback")
         with patch.object(
             pipeline, "stage_diarized_eligibility", return_value=(staged, Path("/shadow"), summary)
         ) as stage, patch.object(
             pipeline, "run_diarized_production", side_effect=pipeline.ProcessingFallback("layer2 failed")
-        ), patch.object(pipeline, "run_flat_meeting", return_value=fallback) as flat:
+        ), patch.object(pipeline, "run_staged_speaker_meeting", return_value=fallback) as flat:
             pipeline.select_audio_first_result(self.args(), self.source, "l2", "l3")
         stage.assert_called_once()
-        self.assertEqual("reusable words", flat.call_args.args[3])
-        self.assertEqual("flat_fallback_from_diarized_transcript", flat.call_args.kwargs["processing_mode"])
+        self.assertEqual(staged, flat.call_args.args[3])
+        self.assertEqual("diarized_general_fallback", flat.call_args.kwargs.get("processing_mode", "diarized_general"))
 
     def test_phone_discovery_failure_isolated_and_valid_source_persists_once(self):
         prompt = self.root / "prompt"
@@ -2420,14 +2438,14 @@ class FlatTrustBoundaryTests(unittest.TestCase):
         )
         self.assertEqual(report, pipeline.validate_flat_layer2_output(report))
 
-    def test_flat_i_me_does_not_become_alex(self):
+    def test_flat_i_me_does_not_become_sharan(self):
         prompt = pipeline.build_llm_prompt(
             "{METADATA}",
             {"meeting_name": "M", "duration_seconds": 1},
             datetime(2026, 7, 8, tzinfo=timezone.utc),
             "I will send the deck.",
         )
-        self.assertNotIn("I = Alex", prompt)
+        self.assertNotIn("I = Owner", prompt)
         self.assertIn("Never map I, me, my", prompt)
 
     def test_flat_prompt_marks_transcript_and_layer2_as_untrusted_evidence(self):
@@ -2476,7 +2494,7 @@ class FlatTrustBoundaryTests(unittest.TestCase):
     def test_flat_named_ownership_is_rejected(self):
         with self.assertRaises(pipeline.ProcessingFallback):
             pipeline.validate_flat_output(
-                "MEETING_TYPE: BD/deal\nACTION: Alex will send the deck\n"
+                "MEETING_TYPE: BD/deal\nACTION: Owner will send the deck\n"
             )
 
     def test_flat_rejects_any_confirmed_marker(self):

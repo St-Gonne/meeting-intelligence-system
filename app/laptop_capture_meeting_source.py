@@ -16,6 +16,8 @@ from laptop_capture_ingest import (
     CAPTURE_MANIFEST_FILENAME,
     METADATA_FILENAME,
     NORMALIZATION_POLICY,
+    OPERATOR_STOP_CONTROL_LOSS_RECOVERY_POLICY,
+    operator_stop_control_loss_recovery_eligible,
     PREFIX_TRIMMED_TERMINAL_SOURCE_LOSS_RECOVERY_POLICY,
     TERMINAL_SOURCE_LOSS_RECOVERY_POLICY,
     SOURCE_KIND,
@@ -130,6 +132,7 @@ def load_laptop_meeting_source(
     normalization_policy = _exact(payload, "normalization_policy", str)
     if normalization_policy not in {
         NORMALIZATION_POLICY,
+        OPERATOR_STOP_CONTROL_LOSS_RECOVERY_POLICY,
         TERMINAL_SOURCE_LOSS_RECOVERY_POLICY,
         PREFIX_TRIMMED_TERMINAL_SOURCE_LOSS_RECOVERY_POLICY,
     }:
@@ -221,6 +224,20 @@ def load_laptop_meeting_source(
         and recovery.get("source_loss_preserved") is True
         and isinstance(recovery.get("attested_at"), str)
     )
+    control_recovery = (
+        normalization_policy == OPERATOR_STOP_CONTROL_LOSS_RECOVERY_POLICY
+        and operator_stop_control_loss_recovery_eligible(manifest, audit)
+        and type(recovery) is dict
+        and recovery.get("attestation") == "meeting_ended_before_operator_stop"
+        and recovery.get("interruption_preserved") is True
+        and recovery.get("source_loss_preserved") is False
+        and isinstance(recovery.get("attested_at"), str)
+        and payload.get("capture_status") == "interrupted"
+        and payload.get("stop_reason") == "control_lost"
+        and recovery.get("retained_prefix_segment_count") == len(audit.finalized_segments)
+        and recovery.get("excluded_tail_segment_count") == 0
+    )
+    recovery_admission = recovery_admission or control_recovery
     if not normal_admission and not recovery_admission:
         raise LaptopSourceValidationError(
             "capture evidence is no longer eligible for its recorded policy"

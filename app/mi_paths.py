@@ -2,9 +2,24 @@
 import os
 from pathlib import Path
 import shutil
+from zoneinfo import ZoneInfo
 
 PROJECT = Path(__file__).resolve().parent
 DATA = Path(os.environ.get('MI_DATA_ROOT', str(PROJECT / '.local'))).expanduser().absolute()
+
+def configured_timezone():
+    value = os.environ.get('MI_TIMEZONE', 'Asia/Kolkata')
+    if value != 'Asia/Kolkata':
+        raise ValueError('recording source contracts currently require Asia/Kolkata; other timezones need a separately validated import path')
+    return ZoneInfo(value)
+
+
+def transcription_backend() -> str:
+    value = os.environ.get('MI_TRANSCRIPTION_BACKEND', 'qwen')
+    if value not in {'qwen', 'whisper', 'legacy'}:
+        raise ValueError('MI_TRANSCRIPTION_BACKEND must be qwen or whisper')
+    return 'legacy' if value in {'whisper', 'legacy'} else 'qwen'
+
 
 def public_path(value: str) -> Path:
     root, _, tail = value.partition('/')
@@ -21,6 +36,9 @@ def public_path(value: str) -> Path:
             return Path(os.environ.get('MI_QWEN_MODEL_DIR', str(DATA / tail)))
         return DATA / 'work' / tail
     if root == 'home':
+        if tail.startswith('Library/Application Support/MeetingIntel/voiceprint-'):
+            private = Path(os.environ.get('MI_VOICE_ROOT', str(Path.home() / 'Library/Application Support/MeetingIntel-public')))
+            return private / tail.removeprefix('Library/Application Support/MeetingIntel/')
         if tail == 'homebrew' or tail.startswith('homebrew/'):
             prefix = Path(os.environ.get('HOMEBREW_PREFIX', '/opt/homebrew'))
             suffix = tail.removeprefix('homebrew').lstrip('/')

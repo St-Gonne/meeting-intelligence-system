@@ -1,6 +1,6 @@
 # Contributing
 
-Start with a small reproduction, measurement or setup fix. The demos do not need private recordings or a model download.
+Read [AGENTS.md](AGENTS.md) and [current status](docs/STATUS.md), then start with a small reproduction, measurement or setup fix. The demos do not need private recordings or a model download.
 
 ```sh
 python3.11 -m venv .venv
@@ -17,3 +17,5 @@ Keep source selection, model preflight, anonymous normal processing, confirmatio
 Code contributions use MIT, including contributions to Voice ID. Commercial reuse is permitted under the MIT terms. See [license scope](LICENSE.md) for earlier architecture documents and third-party materials. The separate phone ingestion toolkit is Apache-2.0.
 
 On Linux, run `.venv/bin/python scripts/test_public.py --portable`. The full suite also checks Mac-only capture, AppKit and launchd integration fixtures. Linux core/demo success is not Linux recorder support.
+
+Use the single-service public default unless testing shared coordination. Include the selected backend and timezone in reproducible setup reports. Runtime speaker integration tests are optional when dependencies are absent; report skips and run them in the separate installed runtime before claiming upstream export parity. Never attach private setup settings or model tokens.

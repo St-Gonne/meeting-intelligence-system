@@ -8,7 +8,6 @@ an existing operator workflow.
 """
 
 from __future__ import annotations
-from mi_paths import public_path
 
 import json
 from dataclasses import dataclass, field, replace
@@ -35,8 +34,8 @@ ACTIVE_CAPTURE_GRACE = timedelta(hours=12)
 @dataclass(frozen=True)
 class InboxConfig:
     inventory: local_inventory.InventoryConfig = local_inventory.InventoryConfig()
-    laptop_ingest_root: Path = public_path("project/ingest/laptop")
-    laptop_capture_root: Path = public_path("project/ingest/captures")
+    laptop_ingest_root: Path = Path(__file__).resolve().parent / "ingest" / "laptop"
+    laptop_capture_root: Path = Path.home() / "Movies" / "MeetingIntel Recordings"
 
 
 @dataclass(frozen=True)
@@ -243,7 +242,7 @@ def _laptop_items(
         if status == "complete" and session_audit.accepted and session_audit.merge_ready:
             label = "laptop validated; waiting for normalization"
             action = "Normalize this exact capture after confirmation"
-        elif status == "interrupted" and session_audit.recovery_ready:
+        elif status == "interrupted" and capture_ingest.terminal_source_loss_recovery_eligible(manifest, session_audit):
             label = "laptop interrupted; recovery eligible"
             action = "Review recovery evidence before normalization"
         elif status == "recording" and now - started <= ACTIVE_CAPTURE_GRACE:

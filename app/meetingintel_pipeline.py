@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-from mi_paths import public_path
+from mi_paths import configured_timezone
+from mi_paths import public_path, transcription_backend
+from contextvars import ContextVar
+from contextlib import contextmanager
 
 import argparse
 import hashlib
@@ -24,6 +27,10 @@ from typing import Any
 from meetingintel_runtime import exclusive_operation, source_annotation
 import meetingintel_observe as observe
 import meetingintel_gpu as gpu
+import meetingintel_identity as identity
+import meetingintel_progress as progress
+import meetingintel_run_health as health
+import meetingintel_staging_cache as staging_cache
 
 from meetingintel_model_policy import (
     GEMMA_OPTIONS,
@@ -39,9 +46,18 @@ from audio_first_meeting_source import (
     load_audio_first_source,
 )
 from diarized_layer2_shadow import (
+    LAYER3_PROMPT_PATH as SPEAKER_BRIEF_PROMPT_PATH,
+    Turn,
+    build_layer2_transcript_input,
+    build_layer3_prompt as build_speaker_layer3_prompt,
+    build_prompt as build_speaker_layer2_prompt,
     build_dominant_two_routing_evidence,
     deterministic_speaker_presentation,
     load_turns,
+    render_transcript,
+    speaker_attribution_warnings,
+    validate_and_sanitize_layer2_output,
+    validate_and_sanitize_layer3_output,
     validate_diarized_brief_owner,
 )
 from context_pack import (
@@ -65,7 +81,7 @@ from ollama_endpoint import (
 )
 
 
-IST = timezone(timedelta(hours=5, minutes=30))
+IST = configured_timezone()
 DEFAULT_MEETINGS_ROOT = Path(str(public_path('home/Movies/meetily-recordings')))
 DEFAULT_LEDGER_PATH = Path(str(public_path('project/state/processed_ledger.json')))
 DEFAULT_OUTPUT_DIR = Path(str(public_path('project/output')))
@@ -89,12 +105,41 @@ def untrusted_content_block(content: str, kind: str) -> str:
         f"{content}\n"
         f"================ END UNTRUSTED {kind.upper()} ================"
     )
+
+
+def progress_stage(stage, *, terminal=False):
+    # Optional display metadata must never prevent processing or persistence.
+    try:
+        if terminal:
+            progress.finish(stage)
+        else:
+            progress.update_current(stage)
+    except (progress.ProgressError, OSError):
+        pass
 PHONE_FINGERPRINT_NAMESPACE = "meetingintel|audio_first|v1|"
 LAPTOP_FINGERPRINT_NAMESPACE = "meetingintel|laptop_capture|v1|"
 DIARIZATION_HELPER_SCRIPT = Path(str(public_path('project/whispermlx_diarization_helper.py')))
 DIARIZED_SHADOW_SCRIPT = Path(str(public_path('project/diarized_layer2_shadow.py')))
 PHONE_TRANSCRIPTION_BACKENDS = {"legacy", "qwen"}
-PHONE_TRANSCRIPTION_BACKEND_DEFAULT = "qwen"
+PHONE_TRANSCRIPTION_BACKEND_DEFAULT = transcription_backend()
+LAPTOP_TRANSCRIPTION_BACKEND_DEFAULT = transcription_backend()
+_laptop_backend = ContextVar('public_laptop_backend', default=None)
+
+
+def laptop_transcription_backend():
+    return _laptop_backend.get() or LAPTOP_TRANSCRIPTION_BACKEND_DEFAULT
+
+
+@contextmanager
+def selected_laptop_backend(backend):
+    if backend not in PHONE_TRANSCRIPTION_BACKENDS:
+        raise ValueError('unsupported laptop transcription backend')
+    token = _laptop_backend.set(backend)
+    try:
+        yield
+    finally:
+        _laptop_backend.reset(token)
+
 QWEN_PYTHON = Path(str(public_path('work/transcription-runtime/qwen-env/bin/python')))
 QWEN_RUNTIME = Path(str(public_path('project/meetingintel_qwen_asr_runtime.py')))
 QWEN_MODEL_DIR = Path(str(public_path('work/transcription-runtime/cache/models--Qwen--Qwen3-ASR-1.7B-hf/snapshots/bcd2b5b7f32b480ab5790554cfa8347f246a14f3')))
@@ -372,6 +417,32 @@ def build_laptop_capture_fingerprint(source_identity: str) -> str:
     return hashlib.sha256(
         f"{LAPTOP_FINGERPRINT_NAMESPACE}{source_identity}".encode("utf-8")
     ).hexdigest()
+
+
+def diarization_speaker_bounds(speaker_count=None):
+    if speaker_count is None:
+        return 1, 8
+    if type(speaker_count) is not int or not 1 <= speaker_count <= 8:
+        raise ValueError("speaker count must be an integer from 1 to 8")
+    return speaker_count, speaker_count
+
+
+def staging_contract(source, backend, speaker_count=None):
+    minimum, maximum = diarization_speaker_bounds(speaker_count)
+    code = [DIARIZATION_HELPER_SCRIPT, Path(__file__).with_name("transcription_quality.py"),
+            Path(__file__).with_name("meetingintel_speaker_turns.py")]
+    code.extend(Path(__file__).with_name(name) for name in
+                (("meetingintel_qwen_asr_runtime.py", "multilingual_transcription_candidate.py")
+                 if backend == "qwen" else ("meetingintel_whisper_runtime.py",)))
+    configuration = {"language": "auto", "task": "transcribe", "min_speakers": minimum,
+                     "max_speakers": maximum, "runtime_python": str(WHISPERMLX_PYTHON),
+                     "code_sha256": {path.name: sha256_file(path) for path in code}}
+    return {"source_identity": source.source_identity,
+            "source_audio_sha256": sha256_file(source.source_audio_path),
+            "source_folder": str(source.source_folder), "source_audio": str(source.source_audio_path),
+            "backend": backend, "model_identifier": QWEN_MODEL_IDENTIFIER if backend == "qwen" else "large-v3",
+            "revision": QWEN_MODEL_REVISION if backend == "qwen" else None,
+            "config_sha256": hashlib.sha256(json.dumps(configuration, sort_keys=True).encode()).hexdigest()}
 
 
 def audio_first_shadow_args(source: ProductionSource) -> list[str]:
@@ -899,10 +970,16 @@ def normalize_record_for_v2(raw_record: dict[str, Any]) -> dict[str, Any]:
 
 def run_captured_command(command: list[str], stage: str) -> subprocess.CompletedProcess[str]:
     print(f"\n[{stage}] {shlex.join(command)}")
-    return gpu.run(command, capture_output=True, text=True)
+    environment = os.environ.copy()
+    operation_id = progress.current_operation_id()
+    if operation_id:
+        environment["MI_OPERATION_ID"] = operation_id
+    return gpu.run(command, capture_output=True, text=True, env=environment)
 
 
 def sanitized_helper_failure_reason(returncode: int, stderr: str) -> str:
+    if "ValueError: qwen_runtime:generation_not_terminated_at_minimum_window" in stderr.splitlines():
+        return "transcription_qwen:window_did_not_finish"
     reason = f"diarization_helper:exit_{returncode}"
     safe_diagnostics = {
         "transcription_quality:repetition_loop": "transcription_repetition_rejected",
@@ -1123,15 +1200,27 @@ def stage_diarized_eligibility(
     audio_first_source: ProductionSource | None = None,
     ollama_url: str | None = None,
     transcription_backend: str | None = None,
+    speaker_count: int | None = None,
 ) -> tuple[Path, Path, dict[str, Any]]:
     try:
+        minimum, maximum = diarization_speaker_bounds(speaker_count)
+        if speaker_count is not None and audio_first_source is None:
+            raise ValueError("speaker count requires one explicit audio-first source")
+        progress_stage("transcription")
         if transcription_backend is None:
-            transcription_backend = "legacy"
+            transcription_backend = (laptop_transcription_backend()
+                if audio_first_source is not None and audio_first_source.source_kind == "laptop_capture"
+                else "legacy")
         if transcription_backend not in PHONE_TRANSCRIPTION_BACKENDS:
             raise ProcessingFallback("transcription_backend:unsupported")
         if audio_first_source is None and transcription_backend != "legacy":
             raise ProcessingFallback("transcription_backend:non_phone_qwen_forbidden")
         source_folder = folder_path.resolve(strict=True)
+        contract = staging_contract(audio_first_source, transcription_backend, speaker_count) if audio_first_source else None
+        cache_root = os.environ.get("MI_STAGING_CACHE_ROOT")
+        cached_stage = (staging_cache.load(audio_first_source.fingerprint, contract, root=cache_root)
+                        if contract and os.environ.get("MI_DISABLE_STAGE_REUSE") != "1" else None)
+        health.reuse(cached_stage is not None)
         helper_command = [sys.executable, str(DIARIZATION_HELPER_SCRIPT)]
         if audio_first_source is None:
             helper_command.extend(["--meeting-folder", str(source_folder)])
@@ -1143,9 +1232,11 @@ def stage_diarized_eligibility(
                     "--source-id", audio_first_source.source_identity,
                 ]
             )
-        helper_command.extend(["--min-speakers", "1", "--max-speakers", "8"])
+        helper_command.extend(["--min-speakers", str(minimum), "--max-speakers", str(maximum)])
         expected_private_output: Path | None = None
-        if audio_first_source is not None and transcription_backend == "qwen":
+        if cached_stage is not None and transcription_backend == "qwen":
+            expected_private_output = cached_stage
+        elif audio_first_source is not None and transcription_backend == "qwen":
             QWEN_STAGING_ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
             QWEN_STAGING_ROOT.chmod(0o700)
             expected_private_output = QWEN_STAGING_ROOT / (
@@ -1170,7 +1261,12 @@ def stage_diarized_eligibility(
         if audio_first_source is not None:
             source_label = "laptop" if audio_first_source.source_kind == "laptop_capture" else "phone"
             print(f"  [Transcription] {source_label} backend: {transcription_backend}")
-        helper_result = run_captured_command(helper_command, "Diarized staging helper")
+        if cached_stage is not None:
+            print("Reusing verified completed transcription; source and configuration hashes match.")
+            helper_result = subprocess.CompletedProcess(helper_command, 0,
+                stdout=f"Manifest: {cached_stage / 'run_manifest.json'}\n", stderr="")
+        else:
+            helper_result = run_captured_command(helper_command, "Diarized staging helper")
         if helper_result.returncode != 0:
             raise ProcessingFallback(
                 sanitized_helper_failure_reason(
@@ -1213,6 +1309,10 @@ def stage_diarized_eligibility(
         elif helper_manifest.get("transcription_mode", "legacy") != "legacy":
             raise ProcessingFallback("diarization_helper:legacy_provenance_mismatch")
 
+        if contract and cached_stage is None:
+            staging_cache.save(audio_first_source.fingerprint, contract, diarization_folder, root=cache_root)
+
+        progress_stage("eligibility")
         shadow_command = [
             sys.executable,
             str(DIARIZED_SHADOW_SCRIPT),
@@ -1476,6 +1576,80 @@ def run_flat_meeting(
     )
 
 
+def complete_observed_speaker_map(report: str, labels: list[str]) -> str:
+    """Render known anonymous labels deterministically; they are not model facts."""
+    body = "\n" + "\n".join(f"- {label} — identity unknown" for label in sorted(labels)) + "\n\n"
+    section = re.search(
+        r"^##\s+SPEAKER MAP\s*$\n(.*?)(?=^##\s+|^===== END REPORT =====|\Z)",
+        report, flags=re.MULTILINE | re.DOTALL,
+    )
+    if section:
+        return report[:section.start(1)] + body + report[section.end(1):]
+    anchor = re.search(r"^##\s+MEETING ARC\s*$|^===== END REPORT =====", report, re.MULTILINE)
+    position = anchor.start() if anchor else len(report)
+    return report[:position] + "## SPEAKER MAP\n" + body + report[position:]
+
+
+@observe.observed('analysis', source_scope=False)
+@gpu.job
+def run_staged_speaker_meeting(
+    args: argparse.Namespace,
+    metadata: dict[str, Any],
+    created_at_ist: datetime,
+    diarization_folder: Path,
+    meeting_name: str,
+    fingerprint: str,
+    layer2_prompt_template: str,
+    *,
+    processing_mode: str = "diarized_general",
+    routing_eligibility: dict[str, Any],
+    fallback_reason: str = "",
+) -> SelectedMeetingResult:
+    """Keep accepted speaker evidence even outside the supported 1:1 route."""
+    turns, transcript_path = load_staged_transcript(diarization_folder)
+    labels = sorted({turn.speaker for turn in turns})
+    # Labels only: Voice ID candidates and presentation names never reach prompts.
+    speaker_map = [{"speaker_label": label} for label in labels]
+    owner_labels = {label for label in labels if re.fullmatch(r"SPEAKER_\d+", label)}
+    transcript = render_transcript(turns, meeting_name)
+    context_snapshot = getattr(args, "context_pack_snapshot", None)
+    l2_prompt, _meeting_time = build_speaker_layer2_prompt(
+        layer2_prompt_template, metadata, transcript, labels, speaker_map, context_snapshot
+    )
+    try:
+        print(f"  [Layer 2] Generating speaker-aware report: {meeting_name}")
+        layer2_raw, layer2_metrics = summarize_with_ollama(l2_prompt, args.ollama_url, args.model)
+        layer2_report = validate_and_sanitize_layer2_output(
+            strip_thinking_tokens(layer2_raw), speaker_map, owner_labels
+        )
+        layer2_report = complete_observed_speaker_map(layer2_report, labels)
+        warnings = speaker_attribution_warnings(layer2_report, labels)
+        layer2_path = save_layer2_report(args.output_dir, fingerprint, meeting_name,
+                                       created_at_ist.strftime("%Y-%m-%d"), layer2_report)
+        print(f"  [Layer 3] Generating speaker-aware brief: {meeting_name}")
+        l3_prompt = build_speaker_layer3_prompt(
+            load_prompt(SPEAKER_BRIEF_PROMPT_PATH), metadata, created_at_ist,
+            layer2_report, warnings,
+        )
+        summary_raw, layer3_metrics = summarize_with_ollama(l3_prompt, args.ollama_url, args.model)
+        summary_text = validate_and_sanitize_layer3_output(
+            strip_thinking_tokens(summary_raw), speaker_map, owner_labels
+        )
+    except ProcessingFallback:
+        raise
+    except Exception as exc:
+        # Never erase labels to manufacture success after failed analysis.
+        raise ProcessingFallback(f"speaker_analysis:{type(exc).__name__}") from exc
+    return SelectedMeetingResult(
+        summary_text=summary_text, layer2_report_path=str(layer2_path),
+        ollama_metrics={"layer2": layer2_metrics, "layer3": layer3_metrics},
+        processing_mode=processing_mode, fallback_reason=fallback_reason,
+        routing_eligibility=routing_eligibility, transcript_path=str(transcript_path),
+        context_pack=(context_snapshot.provenance if context_snapshot else None),
+        layer2_transcript_input=build_layer2_transcript_input(transcript, speaker_map),
+    )
+
+
 @observe.observed('processing', source_scope=True)
 @gpu.job
 def select_meeting_result(
@@ -1520,9 +1694,9 @@ def select_meeting_result(
         )
     routing_eligibility = routing_decision_snapshot(summary)
     if not eligible:
-        return run_flat_meeting(
-            args, metadata, created_at_ist, transcript_text, meeting_name, fingerprint,
-            layer2_prompt_template, prompt_template, processing_mode="flat",
+        return run_staged_speaker_meeting(
+            args, metadata, created_at_ist, diarization_folder, meeting_name, fingerprint,
+            layer2_prompt_template,
             routing_eligibility=routing_eligibility,
         )
     try:
@@ -1531,14 +1705,14 @@ def select_meeting_result(
             created_at_ist.strftime("%Y-%m-%d"),
         )
     except ProcessingFallback as exc:
-        return run_flat_meeting(
-            args, metadata, created_at_ist, transcript_text, meeting_name, fingerprint,
-            layer2_prompt_template, prompt_template, processing_mode="flat_fallback",
+        return run_staged_speaker_meeting(
+            args, metadata, created_at_ist, diarization_folder, meeting_name, fingerprint,
+            layer2_prompt_template, processing_mode="diarized_general_fallback",
             fallback_reason=str(exc), routing_eligibility=routing_eligibility,
         )
 
 
-def flatten_staged_transcript(diarization_folder: Path) -> tuple[str, Path]:
+def load_staged_transcript(diarization_folder: Path) -> tuple[list[Turn], Path]:
     try:
         turns, transcript_path = load_turns(diarization_folder.resolve(strict=True))
     except SystemExit as exc:
@@ -1548,40 +1722,18 @@ def flatten_staged_transcript(diarization_folder: Path) -> tuple[str, Path]:
             f"audio_first:staged_transcript_{type(exc).__name__}"
         ) from exc
     if all(turn.start is not None and turn.end is not None for turn in turns):
-        # Only the phone flattening boundary reorders turns; the shared parser
-        # keeps M4's existing evidence representation unchanged.
+        # Keep a stable chronological view without inferring or merging speakers.
         turns = sorted(turns, key=lambda turn: (turn.start, turn.end))
+    return turns, transcript_path.resolve(strict=True)
+
+
+def flatten_staged_transcript(diarization_folder: Path) -> tuple[str, Path]:
+    """Legacy text utility; accepted-stage analysis uses speaker turns instead."""
+    turns, transcript_path = load_staged_transcript(diarization_folder)
     flattened = " ".join(turn.text.strip() for turn in turns if turn.text.strip()).strip()
     if not flattened:
         raise ProcessingFallback("audio_first:empty_staged_transcript")
     return flattened, transcript_path.resolve(strict=True)
-
-
-def run_audio_first_flat(
-    args: argparse.Namespace,
-    source: ProductionSource,
-    transcript_text: str,
-    layer2_prompt_template: str,
-    prompt_template: str,
-    *,
-    processing_mode: str,
-    routing_eligibility: dict[str, Any],
-    fallback_reason: str = "",
-) -> SelectedMeetingResult:
-    try:
-        return run_flat_meeting(
-            args, source.metadata, source.created_at, transcript_text,
-            source.display_name, source.fingerprint, layer2_prompt_template,
-            prompt_template, processing_mode=processing_mode,
-            fallback_reason=fallback_reason,
-            routing_eligibility=routing_eligibility,
-        )
-    except ProcessingFallback:
-        raise
-    except Exception as exc:
-        raise ProcessingFallback(
-            f"audio_first_flat:{type(exc).__name__}"
-        ) from exc
 
 
 @observe.observed('processing', source_scope=True)
@@ -1596,18 +1748,41 @@ def select_audio_first_result(
     annotation = source_annotation(source.source_identity)
     if annotation and annotation.get("completeness") == "incomplete":
         raise ProcessingFallback("capture_incomplete:operator_correction_requires_review")
-    return _select_audio_first_gpu(args, source, layer2_prompt_template, prompt_template)
+    try:
+        if not progress.read() or progress.read()["stage"] in progress.TERMINAL_STAGES:
+            progress.start(fingerprint64hex=source.fingerprint)
+    except (progress.ProgressError, OSError):
+        pass
+    try:
+        return _select_audio_first_gpu(args, source, layer2_prompt_template, prompt_template)
+    except BaseException as exc:
+        progress_stage("deferred" if isinstance(exc, gpu.Deferred) else "failed", terminal=True)
+        raise
 
 
 @gpu.job
 def _select_audio_first_gpu(args, source, layer2_prompt_template, prompt_template):
+    def presented(result, stage):
+        # Identity follows the anonymous analysis attempt, including failure.
+        # It never changes model input, action owners, or the ledger payload.
+        progress_stage("identity")
+        identity_result = identity.create_presentation(source, stage, args.output_dir)
+        health.identity_result(identity_result)
+        if identity_result.get("status") != "disabled":
+            print("Voice ID: " + identity_result.get("reason", "unavailable").replace("_", " "))
+        if identity_result.get("presentation_path"):
+            print("Speaker transcript: " + str(identity_result["presentation_path"]))
+        return result
+
     selected_backend = (
         getattr(args, "phone_transcription_backend", PHONE_TRANSCRIPTION_BACKEND_DEFAULT)
         if source.source_kind == "phone_recording"
-        else "legacy"
+        else laptop_transcription_backend()
     )
     diarization_folder, _eligibility_output, summary = stage_diarized_eligibility(
-        source.source_folder, source, getattr(args, "ollama_url", None), selected_backend
+        source.source_folder, source, getattr(args, "ollama_url", None), selected_backend,
+        **({"speaker_count": args.diarization_speakers}
+           if getattr(args, "diarization_speakers", None) is not None else {}),
     )
     if selected_backend == "qwen":
         helper_manifest = load_json(diarization_folder / "run_manifest.json", None)
@@ -1621,40 +1796,43 @@ def _select_audio_first_gpu(args, source, layer2_prompt_template, prompt_templat
         }
     eligible = validate_eligibility_summary(summary)
     routing_eligibility = routing_decision_snapshot(summary)
-    transcript_text, transcript_path = flatten_staged_transcript(diarization_folder)
-    if not eligible:
-        result = run_audio_first_flat(
-            args, source, transcript_text, layer2_prompt_template, prompt_template,
-            processing_mode="flat_from_diarized_transcript",
-            routing_eligibility=routing_eligibility,
-        )
-        result.transcript_path = str(transcript_path)
-        result.transcription_provenance = transcription_provenance
-        return result
+    _turns, transcript_path = load_staged_transcript(diarization_folder)
+    def analyze():
+        progress_stage("analysis")
+        if not eligible:
+            return run_staged_speaker_meeting(
+                args, source.metadata, source.created_at, diarization_folder,
+                source.display_name, source.fingerprint, layer2_prompt_template,
+                routing_eligibility=routing_eligibility,
+            )
+        try:
+            return run_diarized_production(
+                args, diarization_folder, summary, source.source_folder,
+                source.fingerprint, source.display_name,
+                source.created_at.strftime("%Y-%m-%d"), source,
+            )
+        except ProcessingFallback as exc:
+            return run_staged_speaker_meeting(
+                args, source.metadata, source.created_at, diarization_folder,
+                source.display_name, source.fingerprint, layer2_prompt_template,
+                processing_mode="diarized_general_fallback",
+                fallback_reason=str(exc), routing_eligibility=routing_eligibility,
+            )
+
     try:
-        result = run_diarized_production(
-            args,
-            diarization_folder,
-            summary,
-            source.source_folder,
-            source.fingerprint,
-            source.display_name,
-            source.created_at.strftime("%Y-%m-%d"),
-            source,
-        )
+        result = analyze()
+    except Exception:
+        # An accepted transcript remains useful when report generation fails.
+        # Preserve the analysis error even if this ancillary presentation fails.
+        try:
+            presented(None, diarization_folder)
+        except Exception:
+            health.identity_result({"status": "unavailable", "reason": "worker_exception"})
+        raise
+    else:
         result.transcript_path = str(transcript_path)
         result.transcription_provenance = transcription_provenance
-        return result
-    except ProcessingFallback as exc:
-        result = run_audio_first_flat(
-            args, source, transcript_text, layer2_prompt_template, prompt_template,
-            processing_mode="flat_fallback_from_diarized_transcript",
-            fallback_reason=str(exc),
-            routing_eligibility=routing_eligibility,
-        )
-        result.transcript_path = str(transcript_path)
-        result.transcription_provenance = transcription_provenance
-        return result
+        return presented(result, diarization_folder)
 
 def serialize_ledger_v2(ledger: dict[str, Any]) -> bytes:
     normalized = {
@@ -1795,15 +1973,36 @@ def persist_selected_transcript(
     meeting_date: str,
     transcript_text: str,
 ) -> tuple[Path, str]:
+    progress_stage("persistence")
     try:
-        return save_transcript_artifact(
+        result = save_transcript_artifact(
             output_dir, fingerprint, meeting_name, meeting_date, transcript_text
         )
+        health.event('artifact.saved', stage='transcript', source_id=fingerprint)
+        return result
     except Exception as exc:
         raise ProductionPersistenceError("transcript persistence failed") from exc
 
 
+def write_delivery_briefs(output_dir, ledger, requested_date, changed_fingerprints):
+    """Save source dates for newly written or exactly selected saved records."""
+    dates = {requested_date}
+    for fingerprint in changed_fingerprints:
+        record = ledger["records"].get(fingerprint)
+        if record:
+            dates.add(date.fromisoformat(record["meeting_date_ist"]))
+    for target in sorted(dates):
+        expected = render_brief(target, collect_today_records(ledger, target))
+        path = output_dir / f"brief_input_{target.isoformat()}.md"
+        if path.is_symlink() or not path.is_file() or path.read_text() != expected:
+            path = write_brief(output_dir, target, expected)
+        if target == requested_date:
+            requested_path = path
+    return requested_path
+
+
 @exclusive_operation("processing")
+@health.batch
 def process_explicit_laptop_sources(
     args: argparse.Namespace,
     sources: tuple[ProductionSource, ...],
@@ -1837,9 +2036,11 @@ def process_explicit_laptop_sources(
     layer2_prompt_template = load_prompt(args.layer2_prompt_path)
     brief_date = resolve_brief_date(args.brief_date)
     new_records = 0
+    written_fingerprints = []
 
     for source in sources:
         if source.fingerprint in ledger["records"] and not args.refresh_existing:
+            written_fingerprints.append(source.fingerprint)
             continue
         try:
             result = select_audio_first_result(
@@ -1877,6 +2078,7 @@ def process_explicit_laptop_sources(
             source_identity=source.source_identity,
             source_audio_path=str(source.source_audio_path),
             context_pack=result.context_pack,
+            transcription_provenance=result.transcription_provenance,
         )
         ledger["records"][record.fingerprint] = asdict(record)
         try:
@@ -1885,20 +2087,23 @@ def process_explicit_laptop_sources(
         except Exception as exc:
             raise ProductionPersistenceError("ledger persistence failed") from exc
         new_records += 1
+        written_fingerprints.append(record.fingerprint)
         print(f"  [Done] {record.meeting_name} at {record.meeting_time_ist}")
         print(record.summary_text)
         print("")
 
-    today_records = collect_today_records(ledger, brief_date)
-    brief_text = render_brief(brief_date, today_records)
     try:
-        output_path = write_brief(args.output_dir, brief_date, brief_text)
+        output_path = write_delivery_briefs(args.output_dir, ledger, brief_date, written_fingerprints)
     except Exception as exc:
         raise ProductionPersistenceError("brief persistence failed") from exc
+    health.delivered(written_fingerprints)
+    if new_records:
+        progress_stage("complete", terminal=True)
     return new_records, output_path
 
 
 @exclusive_operation("processing")
+@health.batch
 def process_meetings(args: argparse.Namespace) -> tuple[int, Path]:
     audio_first_only = bool(getattr(args, "audio_first_only", False))
     audio_first_root = getattr(args, "audio_first_root", None)
@@ -1920,6 +2125,7 @@ def process_meetings(args: argparse.Namespace) -> tuple[int, Path]:
     prompt_template = load_prompt(args.prompt_path)
     layer2_prompt_template = load_prompt(args.layer2_prompt_path)
     new_records = 0
+    written_fingerprints = []
     brief_date = resolve_brief_date(args.brief_date)
     selected_fingerprints = set(getattr(args, "selected_fingerprint", ()) or ())
 
@@ -1954,6 +2160,8 @@ def process_meetings(args: argparse.Namespace) -> tuple[int, Path]:
         if selected_fingerprints and fingerprint not in selected_fingerprints:
             continue
         if fingerprint in ledger["records"] and not args.refresh_existing:
+            if selected_fingerprints or getattr(args, "explicit_meeting_folder", None):
+                written_fingerprints.append(fingerprint)
             continue
 
         meeting_name = metadata.get("meeting_name") or folder_path.name
@@ -2000,6 +2208,7 @@ def process_meetings(args: argparse.Namespace) -> tuple[int, Path]:
         except Exception as exc:
             raise ProductionPersistenceError("ledger persistence failed") from exc
         new_records += 1
+        written_fingerprints.append(record.fingerprint)
 
         print(f"  [Done] {record.meeting_name} at {record.meeting_time_ist}")
         print(record.summary_text)
@@ -2047,6 +2256,8 @@ def process_meetings(args: argparse.Namespace) -> tuple[int, Path]:
             if selected_fingerprints and source.fingerprint not in selected_fingerprints:
                 continue
             if source.fingerprint in ledger["records"] and not args.refresh_existing:
+                if selected_fingerprints or explicit_audio_folders:
+                    written_fingerprints.append(source.fingerprint)
                 continue
             try:
                 result = select_audio_first_result(
@@ -2093,16 +2304,18 @@ def process_meetings(args: argparse.Namespace) -> tuple[int, Path]:
             except Exception as exc:
                 raise ProductionPersistenceError("ledger persistence failed") from exc
             new_records += 1
+            written_fingerprints.append(record.fingerprint)
             print(f"  [Done] {record.meeting_name} at {record.meeting_time_ist}")
             print(record.summary_text)
             print("")
 
-    today_records = collect_today_records(ledger, brief_date)
-    brief_text = render_brief(brief_date, today_records)
     try:
-        output_path = write_brief(args.output_dir, brief_date, brief_text)
+        output_path = write_delivery_briefs(args.output_dir, ledger, brief_date, written_fingerprints)
     except Exception as exc:
         raise ProductionPersistenceError("brief persistence failed") from exc
+    health.delivered(written_fingerprints)
+    if new_records:
+        progress_stage("complete", terminal=True)
     return new_records, output_path
 
 

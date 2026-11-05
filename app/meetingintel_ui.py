@@ -30,7 +30,7 @@ from urllib.parse import urlsplit, parse_qs
 
 ASSETS = Path(__file__).resolve().parent / "ui"
 SOURCE_ID = re.compile(r"[A-Za-z0-9_.:-]{1,180}\Z")
-ACTIONS = frozenset({"process", "repair_brief"})
+ACTIONS = frozenset({"process", "repair_brief", "revoke_identity"})
 ARTIFACTS = frozenset({"transcript", "report", "brief"})
 MAX_BODY = 4096
 
@@ -174,6 +174,9 @@ class UIState:
                 if not isinstance(category, str) or not re.fullmatch(r"[a-zA-Z0-9_.:-]{1,100}", category):
                     category = "completed" if result["ok"] else "failed"
                 operation.update(status="finished" if result["ok"] else ("deferred" if category == "deferred" else "failed"), outcome=category)
+                from meetingintel_learning import SAFE_CODES
+                code = result.get("error_code")
+                operation["error_code"] = code if isinstance(code, str) and code in SAFE_CODES else None
             except (OSError, ValueError, TypeError):
                 operation.update(status="unknown", outcome="result_unreadable")
         elif self.process is not None:
@@ -201,7 +204,16 @@ class UIState:
             operation = self._refresh_operation()
             if not operation:
                 return None
-            return {key: operation[key] for key in ("id", "source_id", "action", "status", "outcome") if key in operation}
+            result = {key: operation[key] for key in ("id", "source_id", "action", "status", "outcome") if key in operation}
+            from meetingintel_learning import SAFE_CODES
+            code = operation.get("error_code")
+            if isinstance(code, str) and code in SAFE_CODES:
+                result["error_code"] = code
+            import meetingintel_progress as progress
+            measured = progress.read(operation["id"]) if isinstance(operation.get("id"), str) else None
+            if measured:
+                result["progress"] = measured
+            return result
 
     def snapshot(self) -> dict[str, Any]:
         result = dict(self.adapter.snapshot())
@@ -221,6 +233,8 @@ class UIState:
 
     @staticmethod
     def _allowed(detail: dict[str, Any], action: str) -> bool:
+        if action == 'revoke_identity':
+            return bool(detail.get('can_revoke_identity'))
         return bool(detail.get("can_process")) if action == "process" else bool(detail.get("can_repair_brief"))
 
     def prepare(self, action: str, source_id: str) -> dict[str, Any]:
@@ -259,7 +273,7 @@ class UIState:
             self._save_operation()
             command = [sys.executable, str(Path(__file__).with_name("meetingintel_actions.py")),
                        "worker", prepared["action"], prepared["source_id"], "--result-file", str(result_file)]
-            environment = dict(os.environ, MI_ORIGIN="gui", MI_OPERATION_ID=operation_id)
+            environment = dict(os.environ, MI_ORIGIN="gui", MI_ACTOR="human", MI_OPERATION_ID=operation_id)
             try:
                 self.process = self.launcher(command, env=environment, stdin=subprocess.DEVNULL,
                                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

@@ -5,8 +5,10 @@ import os
 import signal
 import subprocess
 import sys
+import time
 
 from gpu_lock import Deferred, Session, assert_child
+import meetingintel_progress as progress
 
 _current = ContextVar('meetingintel_gpu_session', default=None)
 
@@ -20,10 +22,22 @@ def job(function):
             return function(*args, **kwargs)
         if os.environ.get('LOCALAI_GPU_LOCK_HELD'):
             assert_child()
-            return function(*args, **kwargs)
+            started = time.monotonic()
+            try:
+                return function(*args, **kwargs)
+            finally:
+                import meetingintel_run_health as health
+                health.gpu_timing(0, int((time.monotonic() - started) * 1000))
         print('Waiting for the local GPU; processing starts when it is free.', flush=True)
         try:
-            with Session('meetingintel') as session:
+            progress.update_current('gpu_wait')
+        except (progress.ProgressError, OSError):
+            pass
+        started = time.monotonic()
+        acquired = None
+        try:
+            with Session('meetingintel', wait_seconds=600) as session:
+                acquired = time.monotonic()
                 token = _current.set(session)
                 try:
                     return function(*args, **kwargs)
@@ -32,6 +46,11 @@ def job(function):
         except Deferred as error:
             print('Processing deferred: ' + error.reason, file=sys.stderr)
             raise
+        finally:
+            import meetingintel_run_health as health
+            ended = time.monotonic()
+            health.gpu_timing(int(((acquired or ended) - started) * 1000),
+                              int((ended - acquired) * 1000) if acquired is not None else 0)
     return wrapped
 
 

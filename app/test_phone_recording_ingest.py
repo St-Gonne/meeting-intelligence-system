@@ -1,4 +1,5 @@
 from __future__ import annotations
+from mi_paths import configured_timezone
 
 import hashlib
 import io
@@ -15,7 +16,7 @@ from zoneinfo import ZoneInfo
 import phone_recording_ingest as ingest
 
 
-IST = ZoneInfo("Asia/Kolkata")
+IST = configured_timezone()
 
 
 class PhoneRecordingIngestTests(unittest.TestCase):

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from mi_paths import configured_timezone
 
 import io
 import tempfile
@@ -15,7 +16,7 @@ import meetingintel_inventory as inventory
 import phone_recording_review as review
 
 
-IST = timezone(timedelta(hours=5, minutes=30))
+IST = configured_timezone()
 
 
 class InboxTests(unittest.TestCase):
@@ -89,8 +90,29 @@ class InboxTests(unittest.TestCase):
         statuses = [item.status for item in result.items]
         self.assertIn("laptop normalized and ready", statuses)
         self.assertIn("laptop validated; waiting for normalization", statuses)
-        self.assertIn("laptop interrupted; recovery eligible", statuses)
+        self.assertIn("laptop capture needs attention", statuses)
+        self.assertNotIn("laptop interrupted; recovery eligible", statuses)
         self.assertFalse((self.config.inventory.processing_ledger).exists())
+
+    def test_terminal_source_loss_uses_normalizer_eligibility(self) -> None:
+        import json
+        self.config.laptop_capture_root.mkdir()
+        folder = self.config.laptop_capture_root / "terminal-loss"
+        folder.mkdir()
+        (folder / "capture_manifest.json").write_text(json.dumps({
+            "status": "interrupted", "capture_id": "terminal-loss",
+            "started_at": self.now.isoformat(), "ended_at": self.now.isoformat(),
+            "stop_reason": "source_lost",
+            "source_events": [{"type": "source_lost", "at": self.now.isoformat()}],
+            "segments": [{"state": "finalized"}],
+        }))
+        audit = SimpleNamespace(accepted=False, merge_ready=False, recovery_ready=False,
+            finalized_segments=(Path("a"),),
+            findings=(SimpleNamespace(severity="error", code="source_not_recovered"),))
+        with patch.object(inventory, "inventory", return_value=self.report()):
+            report = inbox.build_inbox(config=self.config, clock=lambda: self.now,
+                laptop_discover=lambda *a, **k: (), laptop_audit=lambda *a, **k: audit)
+        self.assertEqual(["laptop interrupted; recovery eligible"], [i.status for i in report.items])
 
     def test_old_recording_manifest_is_attention_not_waiting(self) -> None:
         self.config.laptop_capture_root.mkdir()

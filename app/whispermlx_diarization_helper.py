@@ -210,6 +210,15 @@ def select_folders(args: argparse.Namespace) -> list[Path]:
 
 
 def create_output_folder(source_folder: Path, source_label: str | None = None) -> Path:
+    if os.environ.get('MI_CANARY') == '1' and os.environ.get('MI_CANARY_ASR_ROOT'):
+        root = Path(os.environ['MI_CANARY_ASR_ROOT'])
+        if not root.is_absolute() or '..' in root.parts or any(p.is_symlink() for p in (root, *root.parents)):
+            raise ValueError('unsafe canary staging root')
+        root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        root.chmod(0o700)
+        candidate = root / ('stage-' + __import__('uuid').uuid4().hex)
+        candidate.mkdir(mode=0o700)
+        return candidate
     OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
     candidate = OUTPUT_ROOT / (source_label or source_folder.name)
     if not candidate.exists():

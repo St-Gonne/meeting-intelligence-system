@@ -7,7 +7,7 @@ complete guarded capture manifest and a future explicitly admitted source.
 """
 
 from __future__ import annotations
-from mi_paths import public_path
+from mi_paths import configured_timezone
 
 import meetingintel_observe as observe
 
@@ -43,10 +43,11 @@ TERMINAL_SOURCE_LOSS_RECOVERY_POLICY = (
 PREFIX_TRIMMED_TERMINAL_SOURCE_LOSS_RECOVERY_POLICY = (
     "guarded_obs_terminal_source_loss_prefix_trim_recovery_v1"
 )
+OPERATOR_STOP_CONTROL_LOSS_RECOVERY_POLICY = "guarded_obs_operator_stop_control_loss_recovery_v1"
 IDENTITY_NAMESPACE = "meetingintel_laptop_capture_v1"
-DEFAULT_CAPTURE_ROOT = public_path("project/ingest/captures")
+DEFAULT_CAPTURE_ROOT = Path.home() / "Movies" / "MeetingIntel Recordings"
 DEFAULT_INGEST_ROOT = Path(__file__).resolve().parent / "ingest" / "laptop"
-IST = ZoneInfo("Asia/Kolkata")
+IST = configured_timezone()
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,8 @@ class NormalizeConfig:
     allow_terminal_source_loss_recovery: bool = False
     operator_attested_meeting_ended_before_source_loss: bool = False
     keep_finalized_segment_count: int | None = None
+    allow_operator_stop_control_loss_recovery: bool = False
+    operator_attested_meeting_ended_before_operator_stop: bool = False
 
 
 @dataclass(frozen=True)
@@ -234,6 +237,27 @@ def terminal_source_loss_recovery_eligible(
         return False
     terminal_gap = (ended_at - lost_at).total_seconds()
     return 0 <= terminal_gap <= 5.0
+
+
+def operator_stop_control_loss_recovery_eligible(manifest: Mapping[str, object], audit: object) -> bool:
+    """Integrity gate only; admission separately requires explicit operator attestation."""
+    segments = manifest.get("segments")
+    started = _parse_aware_timestamp(manifest.get("started_at"))
+    ended = _parse_aware_timestamp(manifest.get("ended_at"))
+    return bool(
+        manifest.get("status") == "interrupted"
+        and manifest.get("stop_reason") == "control_lost"
+        and manifest.get("source_events") == []
+        and manifest.get("cleanup_errors", []) == []
+        and manifest.get("finalizing", False) is False
+        and started is not None and ended is not None and ended >= started
+        and getattr(audit, "accepted", False)
+        and getattr(audit, "recovery_ready", False)
+        and not getattr(audit, "findings", ())
+        and isinstance(segments, list) and segments
+        and len(segments) == len(getattr(audit, "finalized_segments", ()))
+        and all(isinstance(item, Mapping) and item.get("state") == "finalized" for item in segments)
+    )
 
 
 def _target_name(started_at: datetime, source_identity: str) -> str:
@@ -425,6 +449,14 @@ def normalize_capture(config: NormalizeConfig) -> NormalizeResult:
         and config.operator_attested_meeting_ended_before_source_loss
         and terminal_source_loss_recovery_eligible(manifest, audit)
     )
+    control_recovery = (
+        config.allow_operator_stop_control_loss_recovery
+        and config.operator_attested_meeting_ended_before_operator_stop
+        and operator_stop_control_loss_recovery_eligible(manifest, audit)
+    )
+    recovery_admission = recovery_admission or control_recovery
+    if control_recovery and config.keep_finalized_segment_count is not None:
+        raise ValueError("operator-stop control-loss recovery must retain all finalized chunks")
     if not normal_admission and not recovery_admission:
         codes = ",".join(sorted(audit.codes())) or "capture_not_merge_ready"
         raise ValueError(f"capture is not eligible for normalization: {codes}")
@@ -445,7 +477,9 @@ def normalize_capture(config: NormalizeConfig) -> NormalizeResult:
     retained_count = keep_count if keep_count is not None else len(raw_segments)
     prefix_trimmed = retained_count < len(raw_segments)
     normalization_policy = (
-        PREFIX_TRIMMED_TERMINAL_SOURCE_LOSS_RECOVERY_POLICY
+        OPERATOR_STOP_CONTROL_LOSS_RECOVERY_POLICY
+        if control_recovery
+        else PREFIX_TRIMMED_TERMINAL_SOURCE_LOSS_RECOVERY_POLICY
         if prefix_trimmed
         else TERMINAL_SOURCE_LOSS_RECOVERY_POLICY
         if recovery_admission
@@ -542,9 +576,11 @@ def normalize_capture(config: NormalizeConfig) -> NormalizeResult:
             "capture_status": manifest.get("status"),
             "operator_recovery": (
                 {
-                    "attestation": "meeting_ended_before_terminal_source_loss",
+                    "attestation": ("meeting_ended_before_operator_stop" if control_recovery
+                                    else "meeting_ended_before_terminal_source_loss"),
                     "attested_at": ingested_at,
-                    "source_loss_preserved": True,
+                    "source_loss_preserved": not control_recovery,
+                    "interruption_preserved": True,
                     "retained_prefix_segment_count": len(selected_segments),
                     "excluded_tail_segment_count": (
                         len(audit.finalized_segments) - len(selected_segments)
