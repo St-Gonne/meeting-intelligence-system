@@ -1,4 +1,33 @@
-# Public alpha validation — 25 September 2026
+# Public refresh validation — 5 November 2026
+
+The updated source passes the full macOS synthetic suite: **1,049 tests in 61
+modules**, with five optional upstream-runtime cases skipped in the lightweight
+environment. The full **13-case speaker assignment/export integration module**
+was also run against the installed upstream runtime and passed without skips.
+No real audio or model inference was used. Exact counts are in TEST_RECEIPT.json.
+
+The refresh adds speaker/recovery/Qwen/queue changes, portable settings, explicit
+backend choice, standalone/shared service configuration, and onboarding guidance.
+Single-endpoint GPU tests use fake servers and real process/lock lifecycle checks;
+existing coordinated-service and per-owner calibration checks remain covered.
+The initial focused extraction checks caught and fixed a read-only lifecycle
+adaptation and test fixture path assumptions before the full passing run.
+
+Public-content review covers the complete candidate tree, including new files:
+no known credential signatures, original machine/account paths, author calibration
+constants or prohibited recording/model/state files were found. SOURCE_MANIFEST.json
+records hashes of the final public source bytes. Original private history, actual
+meeting data, enrollment/calibration assets and visual-speaker work are excluded.
+
+Demos and setup inventory are checked separately from actual model/capture readiness.
+A complete installation on a second physical machine, new-owner Voice ID quality,
+phone background upload behavior and whole-call speaker/transcription accuracy
+remain unproven. No model/service configuration on the existing private installation
+was changed by this refresh. The public setup remains a contributor path.
+
+## Earlier September release
+
+### Public alpha validation — 25 September 2026
 
 The application and Voice ID module are extracted into a fresh public source tree. Private Git history, working app state, recordings, transcripts, reports, credentials, embeddings and weights are absent.
 

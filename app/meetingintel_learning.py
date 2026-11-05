@@ -49,9 +49,10 @@ OUTCOMES = {'started', 'success', 'failure', 'unknown', 'interrupted', 'busy',
             'missing', 'deferred', 'skipped', 'available', 'unavailable'}
 ACTIONS = {'process', 'retry', 'record', 'phone_review', 'recover', 'normalize',
            'open_transcript', 'open_report', 'repair_brief', 'refresh',
-           'learning_review', 'sync', 'details', 'stop', 'open_brief'}
+           'learning_review', 'sync', 'details', 'stop', 'open_brief', 'revoke_identity'}
 SAFE_CODES = {'operation_failed', 'transcription_failed', 'diarization_failed', 'brief_write_failed', 'ledger_write_failed', 'capture_incomplete', 'capture_interrupted', 'unknown', 'busy', 'interrupted', 'source_lost', 'source_not_recovered',
               'capture_permission_failed', 'invalid_owner_field', 'storage_failure',
+              'transcription_repetition_rejected', 'deferred', 'runtime_unavailable',
               'validation_failure', 'preflight_failed', 'process_failed', 'worker_failed',
               'process_interrupted', 'persistence_failure', 'ledger_persistence_failed',
               'brief_persistence_failed', 'transcript_persistence_failed',
@@ -63,6 +64,7 @@ DETAIL_ENUMS = {
     'action': ACTIONS,
     'artifact_kind': {'transcript', 'report', 'brief', 'ledger'},
     'processing_mode': {'diarized_1to1', 'flat', 'flat_fallback',
+                        'diarized_general', 'diarized_general_fallback',
                         'flat_from_diarized_transcript', 'flat_fallback_from_diarized_transcript'},
     'capture_status': {'recording', 'completed', 'interrupted', 'unknown'},
 }

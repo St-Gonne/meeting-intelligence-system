@@ -1,4 +1,5 @@
 from __future__ import annotations
+from mi_paths import configured_timezone
 
 import io
 import tempfile
@@ -12,7 +13,7 @@ import meetingintel_cli as cli
 import meetingintel_pipeline as pipeline
 
 
-IST = timezone(timedelta(hours=5, minutes=30))
+IST = configured_timezone()
 
 
 def laptop_source(identity: str, minute: int = 0) -> Mock:
@@ -26,6 +27,39 @@ def laptop_source(identity: str, minute: int = 0) -> Mock:
 
 
 class LaptopRecordingsCliTests(unittest.TestCase):
+    def test_known_speaker_count_is_exact_scoped_and_still_requires_confirmation(self):
+        source = laptop_source('a' * 64)
+        with patch.object(cli, '_laptop_sources', return_value=((source,), ())), \
+             patch.object(cli, '_run_exact_laptop_source', return_value=0) as process, \
+             redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(0, cli.run_recordings(['process', 'aaaaaaaaaaaa', '--speakers', '2'],
+                terminal_isatty=lambda: True, input_func=lambda _: 'n'))
+            process.assert_not_called()
+            self.assertIn('mi recordings process aaaaaaaaaaaa --speakers 2', output.getvalue())
+            self.assertEqual(0, cli.run_recordings(['process', 'aaaaaaaaaaaa', '--speakers', '2'],
+                terminal_isatty=lambda: True, input_func=lambda _: 'y'))
+            self.assertEqual(2, process.call_args.kwargs['speaker_count'])
+            self.assertIs(source, process.call_args.args[0])
+
+    def test_known_speaker_count_reaches_only_the_exact_pipeline_source(self):
+        from types import SimpleNamespace
+        source = laptop_source('a' * 64)
+        selected = Mock(fingerprint='b'*64, created_at=source.created_at,
+                        source_kind='laptop_capture', display_name='Synthetic')
+        args = SimpleNamespace()
+        def production(*pos, **kw):
+            kw['pipeline_runner'](args)
+            return 0
+        with patch.object(cli.pipeline, 'production_source_from_laptop_capture', return_value=selected), \
+             patch.object(cli.pipeline, 'load_ledger', return_value={'records': {}}), \
+             patch.object(cli, '_run_production', side_effect=production), \
+             patch.object(cli.pipeline, 'process_explicit_laptop_sources', return_value=(1, Path('/brief'))) as process, \
+             redirect_stdout(io.StringIO()):
+            cli._run_exact_laptop_source(source, clock=cli.pipeline.now_ist,
+                                        ollama_manager=None, speaker_count=2)
+        self.assertEqual(2, args.diarization_speakers)
+        self.assertEqual((selected,), process.call_args.args[1])
+
     def test_route_precedes_normal_production_discovery(self) -> None:
         with patch.object(cli, "run_recordings", return_value=0) as recordings, patch.object(
             cli, "discover_candidates"
@@ -141,6 +175,20 @@ class LaptopRecordingsCliTests(unittest.TestCase):
         self.assertIn("interactive confirmation required", output.getvalue())
         process.assert_not_called()
 
+    def test_unsupported_recovery_explains_no_command_available(self) -> None:
+        from types import SimpleNamespace
+        audit = SimpleNamespace(accepted=True, merge_ready=False, recovery_ready=True,
+                                finalized_segments=(Path("chunk"),), findings=())
+        manifest = {"status": "interrupted", "stop_reason": "control_lost", "segments": []}
+        output = io.StringIO()
+        with patch.object(cli, "load_manifest", return_value=manifest), patch.object(
+            cli, "audit_capture_session", return_value=audit
+        ), redirect_stdout(output):
+            self.assertFalse(cli._print_capture_diagnostic(Path("synthetic-capture")))
+        self.assertIn("No automatic recovery command is available", output.getvalue())
+        self.assertIn("Keep the original chunks", output.getvalue())
+        self.assertNotIn("next=operator review required", output.getvalue())
+
     def test_diagnose_is_read_only(self) -> None:
         session = Path("/private/tmp/synthetic-session")
         with patch.object(
@@ -212,6 +260,34 @@ class LaptopRecordingsCliTests(unittest.TestCase):
         )
         self.assertIsNone(config.keep_finalized_segment_count)
         process.assert_called_once()
+
+    def test_control_loss_recovery_flag_requires_exact_confirmation(self):
+        from contextlib import ExitStack
+        session = Path("/private/tmp/synthetic-control-loss")
+        output = io.StringIO()
+        with ExitStack() as stack:
+            stack.enter_context(redirect_stdout(output))
+            stack.enter_context(patch.object(cli, "_latest_capture_session", return_value=session))
+            stack.enter_context(patch.object(cli, "_print_capture_diagnostic", return_value=False))
+            stack.enter_context(patch.object(cli, "load_manifest", return_value={"segments": [{"duration_seconds": 10}]}))
+            stack.enter_context(patch.object(cli, "audit_capture_session"))
+            stack.enter_context(patch.object(cli, "operator_stop_control_loss_recovery_eligible", return_value=True))
+            normalize = stack.enter_context(patch.object(cli, "normalize_capture", return_value=Mock(target_root=session)))
+            stack.enter_context(patch.object(cli, "load_laptop_meeting_source", return_value=laptop_source("c" * 64)))
+            process = stack.enter_context(patch.object(cli, "_run_exact_laptop_source", return_value=0))
+            command = ["recover-last", "--operator-stop-control-loss"]
+            self.assertEqual(0, cli.run_recordings(command, terminal_isatty=lambda: True,
+                                                input_func=lambda _: "recover"))
+            normalize.assert_not_called()
+            answers = iter(("RECOVER", "y"))
+            self.assertEqual(0, cli.run_recordings(command, terminal_isatty=lambda: True,
+                                                input_func=lambda _: next(answers)))
+            config = normalize.call_args.args[0]
+            self.assertTrue(config.allow_operator_stop_control_loss_recovery)
+            self.assertTrue(config.operator_attested_meeting_ended_before_operator_stop)
+            self.assertFalse(config.allow_terminal_source_loss_recovery)
+            process.assert_called_once()
+        self.assertIn("meeting finished before you stopped recording", output.getvalue())
 
     def test_recover_last_can_keep_exact_prefix_and_preserve_processing_gate(self) -> None:
         with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:

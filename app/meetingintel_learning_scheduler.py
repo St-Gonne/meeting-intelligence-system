@@ -63,7 +63,7 @@ def _launchctl(arguments):
 
 
 def due():
-    """Quiet on unchanged/non-actionable state; never invokes processing."""
+    """Review usage and admit only the explicitly configured weekly canary."""
     try:
         _receipt('started', 'unknown', 'due_check_started')
         project = os.environ.get('MI_PROJECT_ROOT')
@@ -74,7 +74,11 @@ def due():
             sys.path.insert(0, str(project_path))
         import meetingintel_learning as learning
         result = learning.review()
+        import meetingintel_canary as canary
+        result['canary'] = canary.due()
         category = result['status']
+        if result['canary']['status'] == 'failed':
+            category = 'failed'
         _receipt('completed', 'failure' if category == 'failed' else 'success', category)
         return result
     except Exception:
@@ -106,7 +110,7 @@ def status():
             loaded = result.returncode == 0
         return {'status': 'installed' if installed and loaded else 'not_loaded' if installed else 'not_installed',
                 'installed': installed, 'loaded': loaded, 'receipt': receipt,
-                'cadence': 'daily_and_login_due_check', 'review_window_days': 14}
+                'cadence': 'daily_0200_and_login_due_check', 'review_window_days': 14}
     except Exception:
         return {'status': 'failed', 'error_code': 'scheduler_status_unavailable'}
 
@@ -126,6 +130,17 @@ def install():
             existing = plistlib.loads(plist_path.read_bytes())
             if existing.get('Label') != LABEL or existing.get('ProgramArguments', [None, None])[1] != str(runtime / 'runner.py'):
                 raise OSError('existing scheduler not owned')
+            if (existing.get('StartCalendarInterval') == {'Hour': 2, 'Minute': 0}
+                    and (runtime / 'runner.py').read_bytes() == Path(__file__).read_bytes()):
+                return status()
+            # Refresh the existing owned runner, preserving its single label.
+            _atomic(runtime / 'runner.py', Path(__file__).read_bytes())
+            existing.pop('StartInterval', None)
+            existing['StartCalendarInterval'] = {'Hour': 2, 'Minute': 0}
+            _atomic(plist_path, plistlib.dumps(existing))
+            _launchctl(['bootout', f'gui/{os.getuid()}', str(plist_path)])
+            if _launchctl(['bootstrap', f'gui/{os.getuid()}', str(plist_path)]).returncode:
+                return {'status': 'failed', 'error_code': 'scheduler_bootstrap_failed', 'installed': True}
             return status()
         # Runtime runner can record startup even when the project becomes unavailable.
         _atomic(runtime / 'runner.py', Path(__file__).read_bytes())
@@ -140,7 +155,7 @@ def install():
         payload = {
             'Label': LABEL,
             'ProgramArguments': [sys.executable, str(runtime / 'runner.py'), '--due'],
-            'RunAtLoad': True, 'StartInterval': 86400, 'ProcessType': 'Background',
+            'RunAtLoad': True, 'StartCalendarInterval': {'Hour': 2, 'Minute': 0}, 'ProcessType': 'Background',
             'EnvironmentVariables': {'MI_LEARNING_ROOT': str(root), 'MI_PROJECT_ROOT': str(project),
                                      'MI_ORIGIN': 'scheduled', 'MI_ACTOR': 'scheduler',
                                      'PYTHONDONTWRITEBYTECODE': '1'},

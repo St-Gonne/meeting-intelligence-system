@@ -17,6 +17,18 @@ from test_meetingintel_pipeline import legacy_record
 
 
 class ActionTests(unittest.TestCase):
+    def test_processing_failure_carries_safe_stage_reason_to_worker_result(self):
+        def failed(*args, **kwargs):
+            actions.learning.emit("stage.failed", source_id=self.sid, stage="transcription", outcome="failed",
+                                  error_code="transcription_repetition_rejected")
+            return 1
+        with patch.object(cli, "_load_exact_laptop_source", return_value=object()), patch.object(
+                cli, "_run_exact_laptop_source", side_effect=failed):
+            result = actions.perform("process", self.sid)
+        self.assertFalse(result["ok"])
+        self.assertEqual("transcription_repetition_rejected", result["error_code"])
+        self.assertEqual("transcription_repetition_rejected", actions.detail(self.sid)["last_error"])
+
     def setUp(self):
         self.stack = ExitStack()
         self.addCleanup(self.stack.close)

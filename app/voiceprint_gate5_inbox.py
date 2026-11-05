@@ -162,6 +162,7 @@ class Gate5Inbox:
         provider_id: str = GATE4_PROVIDER_ID,
         model_asset: Path | None = None,
         model_asset_sha256: str | None = None,
+        maintain_state: bool = True,
     ) -> None:
         self.root = _private_root(state_root)
         self.clock = clock
@@ -173,7 +174,7 @@ class Gate5Inbox:
         )
         self.map_path = self.root / MAP_FILENAME
         self.metadata_path = self.root / METADATA_FILENAME
-        self._cleanup_stale()
+        self._cleanup_stale(persist=maintain_state)
 
     @property
     def state_path(self) -> Path:
@@ -294,8 +295,9 @@ class Gate5Inbox:
         os.replace(temporary, self.map_path)
         os.chmod(self.map_path, 0o600)
 
-    def _cleanup_stale(self) -> None:
-        records = {item.identity_id: item for item in self.store.all_records()}
+    def _cleanup_stale(self, *, persist: bool = True) -> None:
+        records = ({item.identity_id: item for item in self.store.all_records()} if persist
+                   else self.store._read_records())
         metadata = self._read_metadata()
         missing = set(metadata["enrollments"]) - set(records)
         for identity in missing:
@@ -333,8 +335,9 @@ class Gate5Inbox:
             value for value in metadata["mappings"]
             if isinstance(value, dict) and value.get("identity") in records and value.get("meeting_id") and value.get("observed_speaker")
         ]
-        self._write_metadata(metadata)
-        self._write_map(metadata["mappings"])
+        if persist:
+            self._write_metadata(metadata)
+            self._write_map(metadata["mappings"])
 
     def enroll_pending(self, identity_id: str, vector: Sequence[float], *, audio_sha256: str | None = None) -> EnrollmentRecord:
         identity = _opaque(identity_id, "identity_id")

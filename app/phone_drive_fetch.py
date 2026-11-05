@@ -6,6 +6,7 @@ diarizes, or processes recordings into MeetingIntel production state.
 """
 
 from __future__ import annotations
+from mi_paths import configured_timezone
 from mi_paths import public_path
 
 import argparse
@@ -27,7 +28,7 @@ from zoneinfo import ZoneInfo
 
 
 PROJECT_ROOT = Path(str(public_path('project')))
-DEFAULT_REMOTE_ROOT = "meetingintel-drive:com.nll.asr/MeetingIntel/phone-recordings"
+DEFAULT_REMOTE_ROOT = os.environ.get("MI_PHONE_REMOTE", "meetingintel-drive:PhoneRecordings")
 DEFAULT_DOWNLOAD_ROOT = public_path("project/staging/phone-drive")
 DEFAULT_LEDGER_PATH = public_path("project/state/phone_drive_fetch_ledger.json")
 DEFAULT_LAUNCH_AGENT_PATH = Path.home() / "Library" / "LaunchAgents" / "com.meetingintel.phone-drive-fetch.plist"
@@ -69,7 +70,7 @@ TRUSTED_INTERPRETER_ROOTS = (
     Path("/usr/local"),
 )
 SCHEDULER_RUNTIME_ENV = "MEETINGINTEL_SCHEDULER_INSTALLED_AT"
-IST = ZoneInfo("Asia/Kolkata")
+IST = configured_timezone()
 
 
 class FetchError(RuntimeError):

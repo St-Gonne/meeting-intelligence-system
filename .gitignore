@@ -10,3 +10,14 @@ __pycache__/
 *.bin
 *.pt
 *.safetensors
+
+# Runtime state is never application source.
+app/state/
+app/output/
+app/ingest/
+app/staging/
+app/artifacts/
+app/checkpoints/
+*.gguf
+*.sqlite
+*.db

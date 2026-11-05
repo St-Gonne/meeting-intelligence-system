@@ -46,3 +46,24 @@ A local calibration report supplies the threshold and model hash. The public ext
 The most useful next contribution is reproducible calibration for a new consenting owner: independent enrollment/test sessions, negative speakers, explicit false-match and false-reject counts, unknown rejection and model/version provenance. Follow that with a local enrollment wizard that makes audio consent, per-meeting confirmation and retention visibly separate.
 
 Do not attach personal recordings or embeddings to public issues. Use generated fixtures for code defects; keep any consented evaluation audio private unless everyone explicitly agreed to that exact publication.
+
+## November update: optional automatic owner presentation
+
+The public code now includes automatic presentation for an **already calibrated,
+consented and retained owner** after anonymous analysis. New installations have
+no enrollment and automatic matching is disabled. `mi voice automatic on` requires
+the separate owner setup; it is not an enrollment shortcut. `off` disables naming,
+and `mi voice revoke FULL_FINGERPRINT` revokes it for one meeting. The inbox also
+provides exact-meeting revocation where a valid machine match exists.
+
+A unique supported candidate with sufficient non-overlapping speech can appear
+in a separately versioned transcript. Ambiguous/insufficient evidence stays anonymous.
+Machine receipts cannot become human confirmations or supply names/action owners
+to analysis. A report failure can leave a readable speaker presentation, but cannot
+create a completed meeting record. Public calibration comes from the new owner's
+validated local report/model, never the author's threshold or enrollment.
+
+The earlier text describing automatic naming as absent applies to the September
+release; this section and STATUS.md describe current scope. Multi-person enrollment
+and a one-command new-owner onboarding wizard remain unfinished. Start anonymously
+and keep Voice ID optional until its separate evaluation is complete.

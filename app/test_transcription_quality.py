@@ -36,6 +36,15 @@ class RepetitionTests(unittest.TestCase):
 
 
 class BackendTests(unittest.TestCase):
+    def test_independent_window_policy_reaches_decoder_and_is_observed(self):
+        backend = Mock(return_value={"language": "en", "segments": []})
+        memory = Mock()
+        memory.get_peak_memory.return_value = 1
+        observations = []
+        guarded_backend(backend, memory, observations)("audio", language=None)
+        self.assertIs(backend.call_args.kwargs.get("condition_on_previous_text"), False)
+        self.assertIs(observations[0].get("condition_on_previous_text"), False)
+
     def test_preserves_options_result_and_records_actual_language(self):
         result = {"language": "hi", "segments": [{"text": "ठीक है, let us proceed."}]}
         backend = Mock(return_value=result)
@@ -44,7 +53,8 @@ class BackendTests(unittest.TestCase):
         observations = []
         wrapped = guarded_backend(backend, memory, observations)
         self.assertIs(result, wrapped("audio", language=None, task="transcribe"))
-        backend.assert_called_once_with("audio", language=None, task="transcribe")
+        backend.assert_called_once_with("audio", language=None, task="transcribe",
+                                       condition_on_previous_text=False)
         memory.clear_cache.assert_called_once_with()
         self.assertEqual(observations[0]["decoded_language"], "hi")
         self.assertNotIn("ठीक", str(observations))
@@ -84,6 +94,19 @@ class BackendTests(unittest.TestCase):
 
 
 class HelperContractTests(unittest.TestCase):
+    def test_runtime_metadata_retains_temperature_without_transcript_content(self):
+        result = {"language": "en", "segments": [{"text": "Synthetic phrase", "temperature": .4},
+                                                   {"text": "More synthetic words", "temperature": 0.}]}
+        observations = []
+        memory = Mock()
+        memory.get_peak_memory.return_value = 1
+        with patch("meetingintel_whisper_runtime.worker_activity") as activity:
+            guarded_backend(Mock(return_value=result), memory, observations)("audio")
+        self.assertEqual([0., .4], observations[0]["observed_decode_temperatures"])
+        self.assertEqual(1, observations[0]["chunk_index"])
+        self.assertNotIn("Synthetic", json.dumps(observations))
+        activity.assert_called_once_with("transcription")
+
     def test_qwen_candidate_failure_cannot_leave_success_or_transcript(self):
         import multilingual_transcription_candidate as candidate
         import whispermlx_diarization_helper as helper
@@ -218,8 +241,18 @@ class RuntimeEntrypointTests(unittest.TestCase):
                 original = Mock(return_value={"language": "hi", "segments": [{"text": "अब " * 30 if reject else "हाँ, proceed."}]})
                 backend.transcribe = original
                 cli_module = types.ModuleType("whispermlx.__main__")
-                cli_module.cli = lambda: backend.transcribe("synthetic", language=None)
-                modules = {"mlx": package, "mlx.core": memory, "mlx_whisper": backend, "whispermlx.__main__": cli_module}
+                transcribe_module = types.ModuleType("whispermlx.transcribe")
+                from test_meetingintel_speaker_turns import conversation
+                assign = Mock(return_value=conversation())
+                transcribe_module.assign_word_speakers = assign
+                def run_cli():
+                    backend.transcribe("synthetic", language=None)
+                    turns = types.SimpleNamespace(to_dict=lambda _orientation: [])
+                    result = transcribe_module.assign_word_speakers(turns, "alignment")
+                    self.assertEqual(["SPEAKER_00", "SPEAKER_01"], [s["speaker"] for s in result["segments"]])
+                cli_module.cli = run_cli
+                modules = {"mlx": package, "mlx.core": memory, "mlx_whisper": backend,
+                           "whispermlx.__main__": cli_module, "whispermlx.transcribe": transcribe_module}
                 with patch.dict(sys.modules, modules), patch.object(sys, "argv", ["runtime", "--output_dir", directory]):
                     if reject:
                         with self.assertRaisesRegex(RuntimeError, "transcription_quality"):
@@ -227,6 +260,7 @@ class RuntimeEntrypointTests(unittest.TestCase):
                     else:
                         self.assertEqual(main(), 0)
                 self.assertIs(backend.transcribe, original)
+                self.assertIs(transcribe_module.assign_word_speakers, assign)
                 memory.set_cache_limit.assert_called_once_with(CACHE_LIMIT_BYTES)
                 path = Path(directory) / "transcription_runtime.json"
                 self.assertEqual(path.stat().st_mode & 0o777, 0o600)

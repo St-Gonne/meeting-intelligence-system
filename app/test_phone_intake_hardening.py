@@ -17,10 +17,6 @@ import phone_fetch_scheduler_runner as scheduler_runner
 
 class PhoneIntakeHardeningTests(unittest.TestCase):
     def setUp(self) -> None:
-        # These tests inject the command runner; no installed rclone is needed.
-        executable = patch.object(fetch, "find_rclone", return_value="/synthetic/rclone")
-        executable.start()
-        self.addCleanup(executable.stop)
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
         self.destination = self.root / "staging"
@@ -160,7 +156,9 @@ class PhoneIntakeHardeningTests(unittest.TestCase):
         stale = (self.current - timedelta(hours=2)).isoformat()
         self.lock.write_text(json.dumps({"pid": 12345, "created_at": stale}))
         runner, _ = self.runner(self.listing())
-        summary = fetch.fetch_recordings(self.config(lock_stale_seconds=60), runner=runner, clock=self.clock)
+        with patch.object(fetch, "_process_alive", return_value=False) as process_alive:
+            summary = fetch.fetch_recordings(self.config(lock_stale_seconds=60), runner=runner, clock=self.clock)
+        process_alive.assert_called_once_with(12345)
         self.assertEqual(1, summary.downloaded)
         self.assertFalse(self.lock.exists())
 

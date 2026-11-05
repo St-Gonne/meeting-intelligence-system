@@ -9,7 +9,7 @@ body:
     id: environment
     attributes:
       label: Computer and runtime versions
-      placeholder: macOS / Linux, Python version, and Node version for MoneyMoney
+      placeholder: macOS / Linux, chip/RAM, Python version; Node/OBS versions if testing capture
     validations:
       required: true
   - type: input

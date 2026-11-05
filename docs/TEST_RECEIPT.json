@@ -1,207 +1,384 @@
 {
-  "date": "2026-09-25",
+  "date": "2026-11-05",
   "python": "3.11",
   "os": "macOS arm64",
-  "modules": {
-    "test_audio_first_meeting_source": {
+  "modules": [
+    {
+      "module": "test_audio_first_meeting_source",
       "tests": 29,
+      "skipped": 0,
       "result": "OK"
     },
-    "test_context_pack": {
+    {
+      "module": "test_context_pack",
       "tests": 19,
+      "skipped": 0,
       "result": "OK"
     },
-    "test_diarized_layer2_shadow": {
+    {
+      "module": "test_diarized_layer2_shadow",
       "tests": 88,
+      "skipped": 0,
       "result": "OK"
     },
-    "test_laptop_capture_admission": {
+    {
+      "module": "test_gpu_lock",
+      "tests": 23,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_laptop_capture_admission",
       "tests": 4,
+      "skipped": 0,
       "result": "OK"
     },
-    "test_laptop_capture_contract": {
+    {
+      "module": "test_laptop_capture_contract",
       "tests": 37,
+      "skipped": 0,
       "result": "OK"
     },
-    "test_laptop_capture_guard": {
-      "tests": 34,
-      "result": "OK"
-    },
-    "test_laptop_capture_ingest": {
-      "tests": 18,
-      "result": "OK"
-    },
-    "test_laptop_capture_interruptions": {
-      "tests": 14,
-      "result": "OK"
-    },
-    "test_laptop_recordings_cli": {
-      "tests": 8,
-      "result": "OK"
-    },
-    "test_meetingintel_actions": {
-      "tests": 24,
-      "result": "OK"
-    },
-    "test_meetingintel_actions_review": {
-      "tests": 3,
-      "result": "OK"
-    },
-    "test_meetingintel_capture_alert": {
-      "tests": 14,
-      "result": "OK"
-    },
-    "test_meetingintel_cli": {
-      "tests": 41,
-      "result": "OK"
-    },
-    "test_meetingintel_gpu": {
-      "tests": 7,
-      "result": "OK"
-    },
-    "test_meetingintel_inbox": {
-      "tests": 18,
-      "result": "OK"
-    },
-    "test_meetingintel_inventory": {
-      "tests": 9,
-      "result": "OK"
-    },
-    "test_meetingintel_learning": {
-      "tests": 22,
-      "result": "OK"
-    },
-    "test_meetingintel_learning_scheduler": {
-      "tests": 8,
-      "result": "OK"
-    },
-    "test_meetingintel_model_policy": {
-      "tests": 5,
-      "result": "OK"
-    },
-    "test_meetingintel_pipeline": {
-      "tests": 113,
-      "result": "OK"
-    },
-    "test_meetingintel_qwen_asr_runtime": {
-      "tests": 5,
-      "result": "OK"
-    },
-    "test_meetingintel_runtime": {
-      "tests": 18,
-      "result": "OK"
-    },
-    "test_meetingintel_shadow_workflow": {
-      "tests": 30,
-      "result": "OK"
-    },
-    "test_meetingintel_ui": {
-      "tests": 31,
-      "result": "OK"
-    },
-    "test_meetingintel_voice_cli": {
-      "tests": 3,
-      "result": "OK"
-    },
-    "test_multilingual_transcription_candidate": {
-      "tests": 19,
-      "result": "OK"
-    },
-    "test_obs_capture_probe": {
-      "tests": 10,
-      "result": "OK"
-    },
-    "test_ollama_endpoint": {
-      "tests": 7,
-      "result": "OK"
-    },
-    "test_ollama_service": {
-      "tests": 21,
-      "result": "OK"
-    },
-    "test_phone_drive_fetch": {
-      "tests": 12,
-      "result": "OK"
-    },
-    "test_phone_intake_hardening": {
+    {
+      "module": "test_laptop_capture_guard",
       "tests": 35,
+      "skipped": 0,
       "result": "OK"
     },
-    "test_phone_recording_ingest": {
-      "tests": 49,
+    {
+      "module": "test_laptop_capture_ingest",
+      "tests": 20,
+      "skipped": 0,
       "result": "OK"
     },
-    "test_phone_recording_review": {
-      "tests": 30,
+    {
+      "module": "test_laptop_capture_interruptions",
+      "tests": 14,
+      "skipped": 0,
       "result": "OK"
     },
-    "test_shadow_artifact_sanitizer": {
-      "tests": 6,
-      "result": "OK"
-    },
-    "test_transcription_quality": {
-      "tests": 16,
-      "result": "OK"
-    },
-    "test_validate_guard_capture": {
-      "tests": 4,
-      "result": "OK"
-    },
-    "test_validate_local_reliability": {
-      "tests": 10,
-      "result": "OK"
-    },
-    "test_voiceprint_boundary": {
-      "tests": 5,
-      "result": "OK"
-    },
-    "test_voiceprint_feasibility_probe": {
-      "tests": 7,
-      "result": "OK"
-    },
-    "test_voiceprint_gate4_harness": {
+    {
+      "module": "test_laptop_recordings_cli",
       "tests": 12,
+      "skipped": 0,
       "result": "OK"
     },
-    "test_voiceprint_gate5_audio": {
-      "tests": 4,
+    {
+      "module": "test_meetingintel_actions",
+      "tests": 25,
+      "skipped": 0,
       "result": "OK"
     },
-    "test_voiceprint_gate5_inbox": {
-      "tests": 5,
-      "result": "OK"
-    },
-    "test_voiceprint_gate5_preview": {
-      "tests": 2,
-      "result": "OK"
-    },
-    "test_voiceprint_owner_bakeoff": {
-      "tests": 16,
-      "result": "OK"
-    },
-    "test_voiceprint_provider_pyannote": {
-      "tests": 4,
-      "result": "OK"
-    },
-    "test_voiceprint_provider_speechbrain": {
+    {
+      "module": "test_meetingintel_actions_review",
       "tests": 3,
+      "skipped": 0,
       "result": "OK"
     },
-    "test_voiceprint_synthetic_candidate": {
-      "tests": 12,
+    {
+      "module": "test_meetingintel_canary",
+      "tests": 10,
+      "skipped": 0,
       "result": "OK"
     },
-    "test_gpu_lock": {
-      "tests": 21,
+    {
+      "module": "test_meetingintel_capture_alert",
+      "tests": 14,
+      "skipped": 0,
       "result": "OK"
     },
-    "test_public_release": {
+    {
+      "module": "test_meetingintel_cli",
+      "tests": 44,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_delivery_dates",
+      "tests": 2,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_gpu",
+      "tests": 7,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_identity",
+      "tests": 20,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_inbox",
+      "tests": 19,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_inventory",
+      "tests": 9,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_learning",
+      "tests": 22,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_learning_scheduler",
+      "tests": 8,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_model_policy",
+      "tests": 5,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_pipeline",
+      "tests": 113,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_progress",
+      "tests": 6,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_queue",
+      "tests": 18,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_qwen_asr_runtime",
+      "tests": 7,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_run_health",
+      "tests": 9,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_runtime",
+      "tests": 18,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_safe_errors",
       "tests": 4,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_shadow_workflow",
+      "tests": 30,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_speaker_context",
+      "tests": 9,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_speaker_turns",
+      "tests": 13,
+      "skipped": 5,
+      "result": "OK (skipped=5)"
+    },
+    {
+      "module": "test_meetingintel_stage_reuse",
+      "tests": 3,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_staging_cache",
+      "tests": 7,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_ui",
+      "tests": 35,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_meetingintel_voice_cli",
+      "tests": 3,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_multilingual_transcription_candidate",
+      "tests": 19,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_obs_capture_probe",
+      "tests": 10,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_ollama_endpoint",
+      "tests": 7,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_ollama_service",
+      "tests": 21,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_phone_drive_fetch",
+      "tests": 12,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_phone_intake_hardening",
+      "tests": 35,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_phone_recording_ingest",
+      "tests": 49,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_phone_recording_review",
+      "tests": 30,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_public_release",
+      "tests": 4,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_public_setup",
+      "tests": 7,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_shadow_artifact_sanitizer",
+      "tests": 6,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_transcription_quality",
+      "tests": 18,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_validate_guard_capture",
+      "tests": 4,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_validate_local_reliability",
+      "tests": 10,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_voiceprint_boundary",
+      "tests": 5,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_voiceprint_feasibility_probe",
+      "tests": 7,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_voiceprint_gate4_harness",
+      "tests": 12,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_voiceprint_gate5_audio",
+      "tests": 4,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_voiceprint_gate5_inbox",
+      "tests": 6,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_voiceprint_gate5_preview",
+      "tests": 4,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_voiceprint_owner_bakeoff",
+      "tests": 16,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_voiceprint_provider_pyannote",
+      "tests": 4,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_voiceprint_provider_speechbrain",
+      "tests": 3,
+      "skipped": 0,
+      "result": "OK"
+    },
+    {
+      "module": "test_voiceprint_synthetic_candidate",
+      "tests": 12,
+      "skipped": 0,
       "result": "OK"
     }
-  },
-  "total_tests": 916,
+  ],
+  "total_tests": 1049,
+  "skipped": 5,
   "models_loaded": false,
-  "gpu_tests": "Fake servers and real subprocesses; process inspection permission required.",
-  "limitations": "Synthetic tests only; not a clean-machine live-model/capture proof."
+  "limits": "Synthetic/fake-server suite in isolated temporary homes. Optional upstream runtime checks are skipped when dependencies are absent. Not a second-machine live capture/model proof.",
+  "optional_upstream_integration": {
+    "module": "test_meetingintel_speaker_turns",
+    "tests": 13,
+    "skipped": 0,
+    "result": "OK",
+    "runtime": "Existing installed upstream Whisper/diarization environment; synthetic assignment/export only"
+  }
 }

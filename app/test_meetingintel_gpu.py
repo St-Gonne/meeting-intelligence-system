@@ -26,7 +26,9 @@ class MeetingGPUIntegrationTests(unittest.TestCase):
         self.root=Path(self.temp.name)
         self.addCleanup(patch.stopall)
         patch.dict(os.environ,{'MI_RUNTIME_ROOT':str(self.root/'runtime'),'MI_LEARNING_ROOT':str(self.root/'learning')}).start()
-        factory=functools.partial(gpu_lock.Session, wait_seconds=.2, lock_path=self.root/'gpu.lock', endpoints=(self.a.url,self.b.url))
+        # Keep the synthetic busy wait bounded when production supplies its
+        # explicit admission timeout.
+        factory=lambda owner, **_options: gpu_lock.Session(owner, wait_seconds=.2, lock_path=self.root/'gpu.lock', endpoints=(self.a.url,self.b.url))
         self.factory=patch.object(gpu,'Session',side_effect=factory).start()
         for server in (self.a,self.b): server.models=[];server.error=False;server.unloads=[]
     def test_whole_meeting_transcription_analysis_cleanup_one_acquisition(self):
@@ -41,7 +43,7 @@ class MeetingGPUIntegrationTests(unittest.TestCase):
         def flat(*a,**kw):
             sequence.append('analysis');self.b.models=['meetingintel']
             self.assertIsNotNone(gpu._current.get());return 'result'
-        with patch.object(pipeline,'stage_diarized_eligibility',side_effect=stage), patch.object(pipeline,'validate_eligibility_summary',return_value=False), patch.object(pipeline,'routing_decision_snapshot',return_value={}), patch.object(pipeline,'run_flat_meeting',side_effect=flat):
+        with patch.object(pipeline,'stage_diarized_eligibility',side_effect=stage), patch.object(pipeline,'validate_eligibility_summary',return_value=False), patch.object(pipeline,'routing_decision_snapshot',return_value={}), patch.object(pipeline,'run_staged_speaker_meeting',side_effect=flat):
             for _ in range(2):
                 result=pipeline.select_meeting_result(args,{},None,'synthetic','synthetic','fixture','l2','l3',self.root)
                 self.assertEqual(result,'result');self.assertEqual(self.b.models,[])

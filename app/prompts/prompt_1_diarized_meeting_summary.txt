@@ -22,6 +22,9 @@ Evidence and timing rules:
 
 - Use only names, companies, facts, stages, and actions present in Layer 2.
 - Use cautious stage language unless Layer 2 contains explicit commitment evidence.
+- Preserve objections and approval conditions. A proposed date is not an agreed
+  deadline, and a suggested action is not an accepted commitment. Attribute any
+  supported action to its recorded speaker label; otherwise use owner unclear.
 - Relative timing is relative to the meeting date in metadata, not processing time.
 - Do not silently resolve the structural checks supplied below.
 

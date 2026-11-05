@@ -1,4 +1,5 @@
 from __future__ import annotations
+from mi_paths import configured_timezone
 
 import argparse
 import io
@@ -18,7 +19,7 @@ from ollama_endpoint import OllamaModelDigestMismatch, OllamaUnreachable
 from ollama_service import ServiceConflict
 
 
-IST = timezone(timedelta(hours=5, minutes=30))
+IST = configured_timezone()
 
 
 def candidate(name: str, created_at: datetime, kind: str = "meetily") -> cli.SourceCandidate:
@@ -26,6 +27,27 @@ def candidate(name: str, created_at: datetime, kind: str = "meetily") -> cli.Sou
 
 
 class ScopeSelectionTests(unittest.TestCase):
+    def test_agent_markers_override_tty_actor_default(self):
+        for marker, explicit, tty, expected in (
+            ('CLAUDECODE', None, True, 'agent'),
+            ('CLAUDECODE', None, False, 'agent'),
+            ('CODEX_THREAD_ID', None, True, 'agent'),
+            ('CODEX_THREAD_ID', 'human', True, 'agent'),
+            (None, 'agent', True, 'agent'),
+            (None, None, True, 'human'),
+            (None, None, False, 'unknown'),
+        ):
+            with self.subTest(marker=marker, explicit=explicit, tty=tty), \
+                    patch.dict(os.environ, {}, clear=True), \
+                    patch.object(cli.sys.stdin, 'isatty', return_value=tty), \
+                    patch.object(cli, 'run_cli', return_value=0):
+                if marker:
+                    os.environ[marker] = '1' if tty else ''
+                if explicit:
+                    os.environ['MI_ACTOR'] = explicit
+                self.assertEqual(cli.main(), 0)
+                self.assertEqual(os.environ['MI_ACTOR'], expected)
+
     def setUp(self):
         self.now = datetime(2026, 7, 8, 18, 0, tzinfo=IST)
         self.today_meetily = candidate("today-meetily", datetime(2026, 7, 8, 9, 0, tzinfo=IST))
@@ -182,6 +204,42 @@ class ScopeSelectionTests(unittest.TestCase):
                     )
                 self.assertEqual(result, 0)
                 process.assert_not_called()
+
+    def test_exact_laptop_blank_confirmation_waits_for_explicit_answer(self):
+        source = Mock(source_identity="a" * 64)
+        for answer, should_process in (("y", True), ("n", False)):
+            with self.subTest(answer=answer):
+                reader = Mock(side_effect=["", answer])
+                with patch.object(cli, "_run_exact_laptop_source", return_value=0) as process, \
+                        redirect_stdout(io.StringIO()):
+                    result = cli._offer_exact_laptop_processing(
+                        source, clock=lambda: self.now, input_func=reader,
+                        terminal_isatty=lambda: True, ollama_manager=None,
+                    )
+                self.assertEqual(result, 0)
+                self.assertEqual(reader.call_count, 2)
+                self.assertEqual(process.call_count, int(should_process))
+                if should_process:
+                    self.assertIs(process.call_args.args[0], source)
+
+    def test_exact_laptop_confirmation_cancellation_explains_why(self):
+        source = Mock(source_identity="a" * 64)
+        for error, explanation in (
+            (EOFError, "Input closed before a choice was received."),
+            (KeyboardInterrupt, "Processing confirmation interrupted."),
+        ):
+            with self.subTest(error=error.__name__):
+                output = io.StringIO()
+                with patch.object(cli, "_run_exact_laptop_source") as process, \
+                        redirect_stdout(output):
+                    result = cli._offer_exact_laptop_processing(
+                        source, clock=lambda: self.now, input_func=Mock(side_effect=error),
+                        terminal_isatty=lambda: True, ollama_manager=None,
+                    )
+                self.assertEqual(result, 0)
+                process.assert_not_called()
+                self.assertIn(explanation, output.getvalue())
+                self.assertIn("Later: mi recordings process " + "a" * 12, output.getvalue())
 
     def test_interrupted_recording_never_normalizes_or_processes(self):
         with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
@@ -445,7 +503,7 @@ class CommandExecutionTests(unittest.TestCase):
                 audio_first_only=True, suppress_private_paths=True,
             )
         self.assertEqual(1, code)
-        self.assertIn("Laptop transcription backend: legacy (Whisper)", output.getvalue())
+        self.assertIn("Laptop transcription backend: qwen (Qwen3-ASR)", output.getvalue())
         self.assertNotIn("Phone transcription backend", output.getvalue())
         self.assertNotIn("Brief written", output.getvalue())
         self.assertIn("no result from this attempt", output.getvalue())

@@ -29,6 +29,15 @@ import uuid
 
 DEFAULT_LOCK = Path.home() / 'Library/Application Support/LocalAI/gpu.lock'
 DEFAULT_ENDPOINTS = ('http://127.0.0.1:11434', 'http://127.0.0.1:11435')
+SINGLE_ENDPOINTS = ('http://127.0.0.1:11435',)
+
+
+def runtime_endpoints():
+    mode = os.environ.get('MI_GPU_MODE', 'standalone')
+    if mode not in {'standalone', 'shared'}:
+        raise ValueError('MI_GPU_MODE must be standalone or shared')
+    return SINGLE_ENDPOINTS if mode == 'standalone' else DEFAULT_ENDPOINTS
+
 DEFER = 75
 
 class Deferred(SystemExit):
@@ -76,14 +85,14 @@ def _empty(endpoints, timeout=2, deadline=None):
             return False
     return deadline is None or time.monotonic() <= deadline
 
-def server_limits():
+def server_limits(endpoints=DEFAULT_ENDPOINTS):
     """Read current listener identities and their actual inherited environments.
 
     Never print or retain the environment itself. launchctl's environment and
     historical logs alone cannot establish the setting on a running process.
     """
     result = {}
-    for port in (11434, 11435):
+    for port in (int(url.rsplit(":", 1)[1]) for url in endpoints):
         try:
             def listener():
                 response = subprocess.run(['/usr/sbin/lsof', '-nP', '-a', '-iTCP:' + str(port),
@@ -105,8 +114,8 @@ def server_limits():
     return result
 
 
-def limits_verified():
-    return all(row['max_loaded_models_one'] for row in server_limits().values())
+def limits_verified(endpoints=DEFAULT_ENDPOINTS):
+    return all(row['max_loaded_models_one'] for row in server_limits(endpoints).values())
 
 
 def _peer_gone(sock):
@@ -196,8 +205,8 @@ def _owned(config):
     # Explicit endpoint + model allowlist: never evict an unrelated model.
     owner = config['owner']
     if owner == 'meetingintel':
-        return {config['endpoints'][1]: {'meetingintel', 'meetingintel:latest'}}
-    if owner.startswith(('qwen-delegate', 'moneymoney')):
+        return {config['endpoints'][-1]: {'meetingintel', 'meetingintel:latest'}}
+    if len(config['endpoints']) == 2 and owner.startswith(('qwen-delegate', 'moneymoney')):
         return {config['endpoints'][0]: {'qwen3.8:27b-mlx'}}
     return {}
 
@@ -266,7 +275,7 @@ def _guard(sock, config):
             except BlockingIOError:
                 pass
             if acquired:
-                if tuple(config['endpoints']) == DEFAULT_ENDPOINTS and not limits_verified():
+                if tuple(config['endpoints']) in {DEFAULT_ENDPOINTS, SINGLE_ENDPOINTS} and not limits_verified(tuple(config['endpoints'])):
                     _send(sock, {'code': DEFER, 'reason': 'live server model limits not verified; run gpu_lock.py check'})
                     return DEFER
                 remaining = max(.05, min(2, deadline - time.monotonic()))
@@ -370,13 +379,14 @@ def _guard(sock, config):
 
 class Session:
     def __init__(self, owner, wait_seconds=5400, *, lock_path=DEFAULT_LOCK,
-                 endpoints=DEFAULT_ENDPOINTS, poll_seconds=.25):
+                 endpoints=None, poll_seconds=.25):
+        endpoints = runtime_endpoints() if endpoints is None else endpoints
         if not re.fullmatch(r'[a-z0-9_-]{1,64}', owner):
             raise ValueError('invalid owner label')
         if not math.isfinite(wait_seconds) or wait_seconds < 0 or not 0 < poll_seconds <= 5:
             raise ValueError('invalid wait/poll time')
-        if len(endpoints) != 2:
-            raise ValueError('two endpoints required')
+        if len(endpoints) not in {1, 2}:
+            raise ValueError('one or two endpoints required')
         for url in endpoints:
             if not re.fullmatch(r'http://(?:127\.0\.0\.1|localhost):[0-9]+', url):
                 raise ValueError('only local HTTP endpoints admitted')
@@ -434,13 +444,13 @@ def main():
     run.add_argument('--owner', required=True)
     run.add_argument('--wait-seconds', type=float, default=5400)
     run.add_argument('--lock-path', type=Path, default=DEFAULT_LOCK)
-    run.add_argument('--endpoints', nargs=2, default=DEFAULT_ENDPOINTS)
+    run.add_argument('--endpoints', nargs='+', default=None)
     run.add_argument('command', nargs=argparse.REMAINDER)
     subs.add_parser('assert-child')
     subs.add_parser('check')
     args = parser.parse_args()
     if args.action == 'check':
-        status = server_limits()
+        status = server_limits(runtime_endpoints())
         print(json.dumps(status, sort_keys=True))
         return 0 if all(row['max_loaded_models_one'] for row in status.values()) else DEFER
     if args.action == 'assert-child':

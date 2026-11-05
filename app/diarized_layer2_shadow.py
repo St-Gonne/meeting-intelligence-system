@@ -2,6 +2,7 @@
 """Run an isolated Layer 2 report from one WhisperMLX diarization output."""
 
 from __future__ import annotations
+from mi_paths import configured_timezone
 from mi_paths import public_path
 
 import argparse
@@ -10,6 +11,7 @@ import difflib
 import hashlib
 import json
 import math
+import os
 import re
 import sys
 import time
@@ -63,7 +65,7 @@ LAYER3_PROMPT_PATH = Path(
 )
 OLLAMA_URL = DEFAULT_OLLAMA_URL
 MODEL = OLLAMA_MODEL
-IST = timezone(timedelta(hours=5, minutes=30))
+IST = configured_timezone()
 MAX_ESTIMATED_PROMPT_TOKENS = GEMMA_SAFE_INPUT_TOKENS
 ROUTING_POLICY_NAME = "dominant_two_plus_fragment_v1"
 ROUTING_MIN_SECOND_SPEAKER_SHARE = 0.10
@@ -86,6 +88,10 @@ SPEAKER_SAFETY_TEMPLATE = """Speaker safety instructions:
 - Attribute statements and actions to neutral speaker labels only when supported.
 - If speaker ownership is unclear, mark it unclear instead of guessing.
 - Preserve diarization uncertainty in ANALYST NOTES.
+- Keep proposals, questions, objections, conditions, and explicit commitments
+  distinct. A request or suggestion is not an accepted action or agreed deadline.
+- Attribute each side of a disagreement to its recorded speaker. Preserve any
+  approval condition; do not combine different speakers into one commitment.
 
 Observed speaker labels:
 {speaker_map}
@@ -643,9 +649,10 @@ def parse_srt(path: Path) -> list[Turn]:
             speaker, text = speaker_match.groups()
         else:
             bracketed_label = BRACKETED_LABEL_RE.match(spoken_text)
-            if bracketed_label and bracketed_label.group("label") != "UNKNOWN_SPEAKER":
+            if bracketed_label and bracketed_label.group("label") not in {"UNKNOWN", "UNKNOWN_SPEAKER"}:
                 fail(f"malformed SRT block {block_index}: invalid speaker label")
-            speaker, text = "UNKNOWN_SPEAKER", spoken_text
+            speaker = "UNKNOWN_SPEAKER"
+            text = bracketed_label.group("body") if bracketed_label else spoken_text
         if not normalize_text(text):
             fail(f"malformed SRT block {block_index}: empty transcript text")
         turns.append(
@@ -1024,6 +1031,8 @@ def validate_and_sanitize_layer2_output(
     if re.search(r"\bSPEAKER_\d+\s*\([^)]*\[confirmed\][^)]*\)", sanitized, re.I):
         raise RuntimeError("unsafe Layer 2 confirmed identity claim")
     if observed_labels is not None:
+        if set(re.findall(r"\bSPEAKER_\d+\b", sanitized)) - observed_labels:
+            raise RuntimeError("unsafe Layer 2 unobserved speaker label")
         sanitized = validate_diarized_action_owners(sanitized, observed_labels)
     sanitized = sanitize_command_like_prose(sanitized)
     return sanitized
@@ -1052,6 +1061,8 @@ def validate_and_sanitize_layer3_output(
     if any(ord(character) < 32 and character not in "\n\r\t" for character in sanitized):
         raise RuntimeError("unsafe Layer 3 control character")
     if observed_labels is not None:
+        if set(re.findall(r"\bSPEAKER_\d+\b", sanitized)) - observed_labels:
+            raise RuntimeError("unsafe Layer 3 unobserved speaker label")
         sanitized = validate_diarized_brief_owner(sanitized, observed_labels)
     sanitized = sanitize_command_like_prose(sanitized)
     return sanitized
@@ -1547,6 +1558,15 @@ def call_ollama(prompt: str) -> tuple[str, dict[str, Any]]:
 
 
 def create_output_folder(meeting_label: str) -> Path:
+    if os.environ.get('MI_CANARY') == '1' and os.environ.get('MI_CANARY_SHADOW_ROOT'):
+        root = Path(os.environ['MI_CANARY_SHADOW_ROOT'])
+        if not root.is_absolute() or '..' in root.parts or any(p.is_symlink() for p in (root, *root.parents)):
+            raise ValueError('unsafe canary shadow root')
+        root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        root.chmod(0o700)
+        candidate = root / ('analysis-' + __import__('uuid').uuid4().hex)
+        candidate.mkdir(mode=0o700)
+        return candidate
     SHADOW_OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
     safe_label = re.sub(r"[^a-zA-Z0-9_-]+", "_", meeting_label).strip("_")[:80]
     timestamp = datetime.now(IST).strftime("%Y%m%dT%H%M%S%z")

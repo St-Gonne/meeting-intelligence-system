@@ -57,8 +57,8 @@ EXPECTED_PROCESSING_MODES = {
     "flat",
     "flat_fallback",
     "diarized_1to1",
-    "flat_from_diarized_transcript",
-    "flat_fallback_from_diarized_transcript",
+    "diarized_general",
+    "diarized_general_fallback",
 }
 
 
@@ -209,6 +209,14 @@ class VoiceprintBoundaryTests(unittest.TestCase):
             if isinstance(node, ast.keyword) and node.arg == "processing_mode":
                 if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
                     processing_modes.add(node.value.value)
+            elif isinstance(node, ast.FunctionDef):
+                # Include defaults as well as explicit call-site modes.
+                defaults = list(zip(node.args.args[-len(node.args.defaults):], node.args.defaults))
+                defaults.extend(zip(node.args.kwonlyargs, node.args.kw_defaults))
+                for argument, default in defaults:
+                    if argument.arg == "processing_mode" and isinstance(default, ast.Constant):
+                        if isinstance(default.value, str):
+                            processing_modes.add(default.value)
         self.assertEqual(EXPECTED_PROCESSING_MODES, processing_modes)
         self.assertNotIn("voiceprint", inspect_source(diarized_layer2_shadow))
 

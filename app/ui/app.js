@@ -16,6 +16,19 @@ const errors = {
   operation_unavailable: "The action could not start. Refresh and inspect the recording before retrying.",
   worker_start_failed: "The processing worker could not start. No new processing was confirmed."
 };
+const processingErrors = {
+  transcription_repetition_rejected: "Transcription produced repetitive text and was rejected. No new transcript was accepted. Keep the recording and retry this exact source deliberately.",
+  invalid_owner_field: "Analysis could not safely assign an action owner. Completed transcription is retained; review and retry this exact recording.",
+  transcription_failed: "Transcription stopped. Keep the original recording, inspect the source and retry this exact item.",
+  diarization_failed: "Speaker processing stopped. Keep the original recording and inspect the completed stages before retrying.",
+  runtime_unavailable: "The local processing runtime is unavailable. Check Terminal diagnostics before retrying.",
+  brief_write_failed: "The daily brief could not be saved. Use the brief repair action when saved records are available.",
+  ledger_write_failed: "The meeting record could not be saved. Check local storage before retrying.",
+  deferred: "GPU work was deferred. Your recording is saved; retry after the other local AI work finishes.",
+  busy: "Recording or processing is already active. Wait for it to finish before retrying.",
+  capture_incomplete: "The retained recording is incomplete. Review the saved portion in Terminal."
+};
+function processingError(code) { return processingErrors[code] || "Processing stopped. Saved artifacts remain available; inspect this recording before retrying."; }
 function node(tag, className, text) { const element = document.createElement(tag); if (className) element.className = className; if (text !== undefined) element.textContent = text; return element; }
 function button(label, className, action) { const element = node("button", "button " + className, label); element.addEventListener("click", action); return element; }
 function human(value) { if (value === null || value === undefined || value === "") return "Not yet known"; if (typeof value === "object") return human(value.label || value.status || value.state); return String(value).replace(/_/g, " "); }
@@ -44,6 +57,8 @@ function renderDetail(item) {
   panel.append(node("p", "detail-meta", human(item.source_kind) + " · " + dateLabel(item.created_at)), node("h2", "detail-title", item.title || "Recording"));
   if (Number.isFinite(item.duration_seconds)) { const seconds = Math.round(item.duration_seconds); panel.append(node("p", "subtle", (item.duration_is_final ? "Saved audio: " : "Last observed audio: ") + Math.floor(seconds / 60) + " min " + (seconds % 60) + " sec")); }
   if (item.warning) panel.append(node("div", "notice error", human(item.warning)));
+  if (item.last_error) panel.append(node("div", "notice error", processingError(item.last_error)));
+  if (item.identity_header) panel.append(node("p", "notice", item.identity_header + (item.identity_state === "matched" ? ". This meeting was not human-confirmed." : ": " + human(item.identity_reason) + ".")));
   const grid = node("div", "state-grid");
   for (const [label, key] of [["Recording", "recording_state"], ["Transcript", "transcript_state"], ["Report", "report_state"], ["Daily brief", "brief_state"]]) {
     const cell = node("div", "state-cell"); cell.append(node("span", "state-label", label), node("span", "state-value", human(item[key]))); grid.append(cell);
@@ -52,6 +67,7 @@ function renderDetail(item) {
   const actions = node("div", "action-row");
   if (item.can_process) actions.append(button(/fail|stop|retry/i.test(item.status || "") ? "Review processing retry" : "Process this recording", "primary", () => prepare("process", item.id)));
   if (item.can_repair_brief) actions.append(button("Repair daily brief", "primary", () => prepare("repair_brief", item.id)));
+  if (item.can_revoke_identity) actions.append(button("Revoke owner naming", "secondary", () => prepare("revoke_identity", item.id)));
   if (item.handoff) actions.append(button("Continue in Terminal", "secondary", () => handoff(item.handoff, item.next_action || "Continue the guided workflow in Terminal.", item.id)));
   if (actions.childElementCount) next.append(actions); panel.append(next);
   const artifacts = (item.artifacts || []).filter(x => ["transcript", "report", "brief"].includes(x.kind));
@@ -66,11 +82,16 @@ function renderOperation(operation) {
   lastOperation = operation; const target = $("operation"); target.hidden = !operation;
   if (!operation) return;
   const labels = {deferred:"Local GPU work was deferred. Your recording is saved; retry when the other local AI work has finished or the service check is resolved.", running:"Processing is active. You can refresh or leave this browser tab; the local worker continues.", starting:"Starting the selected operation…", finished:"The operation finished. The states below reflect the currently saved artifacts.", failed:"The operation stopped: " + human(operation.outcome) + ". Inspect the saved stages before retrying.", interrupted:"Processing stopped without a confirmed outcome. Saved artifacts have been preserved; inspect the recording before retrying.", unknown:"Worker state is uncertain. The inbox cannot claim completion or safely start another operation. Check Terminal diagnostics."};
-  target.textContent = labels[operation.status] || "Operation state is unavailable.";
+  target.textContent = operation.status === "failed" ? processingError(operation.error_code) : (labels[operation.status] || "Operation state is unavailable.");
+  if (operation.progress && ["running", "starting"].includes(operation.status)) {
+    const p = operation.progress;
+    target.textContent = p.stage_label + " · elapsed " + Math.floor(p.elapsed_seconds / 60) + " min " + (p.elapsed_seconds % 60) + " sec · last observed activity " + p.seconds_since_activity + " sec ago. Refresh to check again.";
+  }
 }
 async function refresh() {
   if (refreshing) return; refreshing = true;
   try { const result = await api("/api/snapshot"); items = result.items || []; $("connection").hidden = true; $("warnings").replaceChildren(); for (const warning of result.warnings || []) $("warnings").append(node("div", "notice", human(warning))); renderList(); renderOperation(result.operation);
+    $("run-health").textContent = result.run_health?.header || "Run health unavailable; stability is unverified.";
     if (selectedId && items.some(x => x.id === selectedId)) { const requestedId = selectedId; const detail = await api("/api/detail?id=" + encodeURIComponent(requestedId)); if (selectedId === requestedId) renderDetail(detail); }
     else if (items.length) { selectedId = (items.find(issue) || items.find(x => today(x.created_at)) || items[0]).id; if (!today(items.find(x => x.id === selectedId).created_at) && !issue(items.find(x => x.id === selectedId))) showOlder = true; await select(selectedId); }
     else { selectedId = null; $("meeting-detail").replaceChildren(node("p", "empty", "Select a recording when one becomes available.")); }
@@ -78,7 +99,7 @@ async function refresh() {
   } catch(error) { showError(error); $("operation").hidden = false; $("operation").textContent = "Connection lost: displayed recording and processing states may be stale. No completion is confirmed."; } finally { refreshing = false; }
 }
 async function prepare(action, sourceId) {
-  try { confirmation = await api("/api/prepare", {action, source_id:sourceId}); const repair = action === "repair_brief"; $("confirm-title").textContent = repair ? "Repair the daily brief?" : "Process this recording?"; $("confirm-source").textContent = (confirmation.source.title || "Recording") + " · " + dateLabel(confirmation.source.created_at); $("confirm-explanation").textContent = repair ? "Rebuild the brief from already saved records. This does not rerun transcription or analysis." : "Only this selected recording will be processed. A retry may repeat transcription. Original recordings are retained."; $("confirm-submit").textContent = repair ? "Repair daily brief" : "Process this recording"; $("confirm-dialog").showModal(); } catch(error) { showError(error); }
+  try { confirmation = await api("/api/prepare", {action, source_id:sourceId}); const repair = action === "repair_brief", revoke = action === "revoke_identity"; $("confirm-title").textContent = revoke ? "Revoke owner naming for this meeting?" : repair ? "Repair the daily brief?" : "Process this recording?"; $("confirm-source").textContent = (confirmation.source.title || "Recording") + " · " + dateLabel(confirmation.source.created_at); $("confirm-explanation").textContent = revoke ? "This meeting will show anonymous speaker labels. The revocation persists through later automatic matching. Your owner enrollment remains available for other meetings." : repair ? "Rebuild the brief from already saved records. This does not rerun transcription or analysis." : "Only this selected recording will be processed. A retry may repeat transcription. Original recordings are retained."; $("confirm-submit").textContent = revoke ? "Revoke owner naming" : repair ? "Repair daily brief" : "Process this recording"; $("confirm-dialog").showModal(); } catch(error) { showError(error); }
 }
 async function cancelConfirmation() { const previous = confirmation; confirmation = null; $("confirm-dialog").close(); if (previous) { try { await api("/api/cancel", {confirmation_id:previous.confirmation_id}); } catch(error) { showError(error); } } }
 $("confirm-cancel").addEventListener("click", cancelConfirmation);

@@ -70,6 +70,37 @@ class UIBase(unittest.TestCase):
 
 
 class UITest(UIBase):
+    def test_revoke_is_confirmed_once_and_revalidated_before_worker(self):
+        self.adapter.item['can_revoke_identity'] = True
+        prepared = self.state.prepare('revoke_identity', SOURCE)
+        self.assertEqual(self.calls, [])
+        self.state.execute(prepared['confirmation_id'])
+        self.assertEqual(self.calls[0][0][3:5], ['revoke_identity', SOURCE])
+        with self.assertRaises(ui.UIError):
+            self.state.execute(prepared['confirmation_id'])
+
+    def test_revoke_rejected_if_names_are_no_longer_visible(self):
+        self.adapter.item['can_revoke_identity'] = True
+        prepared = self.state.prepare('revoke_identity', SOURCE)
+        self.adapter.item['can_revoke_identity'] = False
+        with self.assertRaises(ui.UIError):
+            self.state.execute(prepared['confirmation_id'])
+        self.assertEqual(self.calls, [])
+
+    def test_operation_projects_only_allowlisted_failure_reason(self):
+        operation = self.state.execute(self.state.prepare("process", SOURCE)["confirmation_id"])
+        path = self.root / (operation["id"] + ".result.json")
+        path.write_text(json.dumps({"ok": False, "outcome": "failed", "error_code": "transcription_repetition_rejected"}))
+        self.assertEqual("transcription_repetition_rejected", self.state.operation_status()["error_code"])
+        path.write_text(json.dumps({"ok": False, "outcome": "failed", "error_code": "/private/raw-model-output"}))
+        self.assertNotIn("error_code", self.state.operation_status())
+
+    def test_damaged_operation_stays_unknown_without_progress_lookup_failure(self):
+        (self.root / "operation.json").write_text("{damaged")
+        state = ui.UIState(adapter=self.adapter, runtime_root=self.root)
+        self.assertEqual("unknown", state.operation_status()["status"])
+        self.assertNotIn("progress", state.operation_status())
+
     def test_gpu_deferral_is_visible_and_not_completion(self):
         operation = self.state.execute(self.state.prepare("process", SOURCE)["confirmation_id"])
         path = self.root / (operation["id"] + ".result.json")

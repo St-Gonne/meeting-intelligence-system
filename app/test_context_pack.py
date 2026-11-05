@@ -5,6 +5,7 @@ import hashlib
 import json
 import tempfile
 import unittest
+from contextlib import nullcontext
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -216,7 +217,11 @@ class ContextPackTests(unittest.TestCase):
                 seen_prompts.append(prompt)
                 return ("L2" if len(seen_prompts) == 1 else "L3", {})
 
-            with patch.object(pipeline, "summarize_with_ollama", side_effect=fake_summarize):
+            # This exercises context propagation with synthetic analysis, so it
+            # must not acquire the production GPU or contact live services.
+            with patch.object(pipeline, "summarize_with_ollama", side_effect=fake_summarize), patch(
+                "meetingintel_gpu.Session", return_value=nullcontext()
+            ):
                 result = pipeline.run_flat_meeting(
                     args,
                     {"meeting_name": "M", "duration_seconds": 1},
@@ -291,14 +296,3 @@ class ContextPackTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-# Model calls in this suite are synthetic. GPU lifecycle is tested separately.
-from test_meetingintel_pipeline import _SyntheticSession
-
-def setUpModule():
-    global _public_gpu_patch
-    _public_gpu_patch = patch("meetingintel_gpu.Session", _SyntheticSession)
-    _public_gpu_patch.start()
-
-def tearDownModule():
-    _public_gpu_patch.stop()

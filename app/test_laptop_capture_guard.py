@@ -421,6 +421,25 @@ class GuardMonitorTests(unittest.TestCase):
             reason = guard.monitor_recording(config, state, log, process)
         self.assertEqual("control_lost", reason)
 
+    def test_stop_signal_during_status_request_takes_precedence(self) -> None:
+        for signum in (guard.signal.SIGINT, guard.signal.SIGTERM, guard.signal.SIGHUP):
+            for failed in (True, False):
+                with self.subTest(signal=signum, failed=failed):
+                    config, state, log = self.config_and_state()
+                    process = mock.Mock()
+                    process.poll.return_value = None
+
+                    def request(*_args):
+                        state.stop_signal = signum
+                        if failed:
+                            raise guard.subprocess.CalledProcessError(-signum, "synthetic-control")
+                        return {"outputActive": False}
+
+                    with mock.patch.object(guard, "request_json", side_effect=request):
+                        with self.assertRaises(guard.StopRequested) as caught:
+                            guard.monitor_recording(config, state, log, process)
+                    self.assertEqual(signum, caught.exception.signum)
+
     def test_explicit_source_loss_interrupts_before_file_growth_check(self) -> None:
         config, state, log = self.config_and_state()
         log.write_text(

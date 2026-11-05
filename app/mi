@@ -1,8 +1,37 @@
 #!/usr/bin/env python3
-"""Public launcher: isolate application state before importing the CLI."""
+"""Public launcher: load explicit settings and isolate state before CLI imports."""
 import os
-from mi_paths import DATA
-for name, part in [('MI_RUNTIME_ROOT','runtime'), ('MI_UI_ROOT','ui'), ('MI_LEARNING_ROOT','learning')]:
+import sys
+from mi_config import load_settings
+
+try:
+    load_settings()
+    arguments = sys.argv[1:]
+    selected = []
+    index = 0
+    while index < len(arguments):
+        value = arguments[index]
+        if value == '--transcription-backend':
+            if index + 1 == len(arguments):
+                raise ValueError('--transcription-backend requires qwen or whisper')
+            selected.append(arguments[index + 1]); del arguments[index:index + 2]
+            continue
+        if value.startswith('--transcription-backend='):
+            selected.append(value.split('=', 1)[1]); del arguments[index]
+            continue
+        index += 1
+    if len(selected) > 1 or (selected and selected[0] not in {'qwen', 'whisper'}):
+        raise ValueError('select --transcription-backend qwen or whisper once')
+    if selected:
+        os.environ['MI_TRANSCRIPTION_BACKEND'] = selected[0]
+    sys.argv[1:] = arguments
+    from mi_paths import DATA, transcription_backend
+    transcription_backend()
+except (ValueError, OSError) as error:
+    print('Setup configuration: ' + str(error), file=sys.stderr)
+    raise SystemExit(2)
+for name, part in [('MI_RUNTIME_ROOT','runtime'), ('MI_UI_ROOT','ui'), ('MI_LEARNING_ROOT','learning'),
+                   ('MI_PROGRESS_ROOT','progress'), ('MI_RUN_HEALTH_ROOT','run-health')]:
     os.environ.setdefault(name, str(DATA / part))
 from meetingintel_cli import main
 raise SystemExit(main())

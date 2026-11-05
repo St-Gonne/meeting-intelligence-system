@@ -2,101 +2,106 @@
 
 [![Build checks](https://github.com/St-Gonne/meeting-intelligence-system/actions/workflows/public-source.yml/badge.svg)](https://github.com/St-Gonne/meeting-intelligence-system/actions/workflows/public-source.yml)
 
-I built this because recording a meeting was easy. Reliably getting from the recording to something I could use was much harder.
+Record a meeting on your Mac, or bring in recordings from your phone. Transcribe
+locally, keep speaker turns, and get a detailed report and a shorter daily brief.
+The inbox shows recording, transcript, report and brief status separately.
 
-MeetingIntel records on a Mac, brings in phone recordings, transcribes them locally and turns them into a detailed report and a shorter daily brief. The inbox shows what actually exists at each step, so a saved recording does not get confused with a finished report.
+This is an early public application for people comfortable with Python and local
+models, including people using a coding AI to help with setup. Demos work without
+models or accounts. Real processing needs your own tools, models and permissions.
 
-**The application source and Voice ID module are now here, as an early public release.** The small demos below run without models or accounts. Setting up real transcription and recording still takes work; this is a contributor release, not a one-click Mac app.
+![The actual inbox with invented recording states](docs/images/inbox-synthetic.jpg)
 
-![The running inbox with invented recordings and an explicit incomplete-capture warning](docs/images/inbox-synthetic.jpg)
+*The screenshot shows the synthetic demo. Processing is disabled in that demo.*
 
-*Actual UI, synthetic examples. The screenshot is from `demo_ui.py`; processing is disabled in that demo.*
+## Start with your AI
 
-## Try it in a few minutes
+Give your coding AI the repository and this instruction:
 
-Python 3.11 on macOS or Linux is enough for these demos. Windows support has not been established.
+> Read AGENTS.md and docs/AI_SETUP.md. Check my computer, help me run the demos,
+> then set up the laptop and/or phone workflow I choose. Finish with a short
+> tutorial and command sheet using my actual commands and folders. Tell me which
+> steps passed and what still needs my input.
+
+The [AI setup guide](docs/AI_SETUP.md) and [setup instructions](docs/SETUP.md)
+cover dependency installation, model downloads, saved settings, one-service
+Ollama and verification. You complete account login, model terms and OS permissions.
+
+## Try the demos
+
+Python 3.11 on macOS or Linux is enough:
 
 ```sh
 git clone https://github.com/St-Gonne/meeting-intelligence-system.git
 cd meeting-intelligence-system
+python3.11 scripts/setup_check.py --mode demo
 python3.11 app/mi help
 python3.11 app/demo_ui.py
 ```
 
-The second command opens the real inbox with invented recordings. It does not inspect your meetings, record audio, start a model or install a service. Press Ctrl-C to stop it.
-
-Try the separate Voice ID lifecycle:
+The inbox uses invented items. Press Ctrl-C to stop it. Then try the optional
+Voice ID lifecycle, using invented vectors rather than actual voices:
 
 ```sh
 python3.11 app/demo_voice_id.py
 ```
 
-This exercises enrollment, a candidate match, per-meeting confirmation, separate retention consent and revocation using invented vectors. It proves the state transitions; it is **not an accuracy demonstration**. [Voice ID module and API →](docs/VOICE_ID.md)
+[First-run walkthrough](docs/FIRST_RUN.md) · [Tutorial](docs/TUTORIAL.md) ·
+[Command sheet](docs/COMMANDS.md) · [Current status and limits](docs/STATUS.md)
 
-## Give it one first run
+## What the current application does
 
-[Walk through the inbox and Voice ID demo](docs/FIRST_RUN.md), then share where
-setup or the wording got in your way. A failed first run is useful feedback too.
-For a code change, [start with one scoped issue](https://github.com/St-Gonne/meeting-intelligence-system/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
-If this is useful, star it to follow along or fork it to try a change.
+| Part | Behavior |
+|---|---|
+| Laptop capture | Guarded OBS recording, checksum manifest, clean stop and explicit processing |
+| Phone intake | Read-only Drive download, settlement, grouping review and canonical audio |
+| Transcription | Qwen defaults for phone/guarded laptop; explicit Whisper option; Meetily keeps Whisper |
+| Speaker handling | Retains aligned word-speaker changes and timestamps; tied overlaps remain unknown |
+| Analysis | Local report and daily brief; observed labels own actions, names stay outside model prompts |
+| Recovery | Preserves raw audio, validates exact sources and reuses accepted completed transcription stages |
+| Queue | One approval for today's ready set, sequential processing, saved status and deliberate retries |
+| Runtime | One managed Ollama service by default; optional shared-GPU coordination |
+| Optional owner matching | Separately calibrated enrollment, consent, revocation and machine-match provenance |
 
-## What is included
+The November refresh brings the recent speaker export, numeric timestamp,
+overlap, Qwen window/reuse, stop/recovery and delivery fixes into the public code.
+It also adds setup guidance for humans and coding AIs. See [CHANGELOG.md](CHANGELOG.md).
+These changes preserve evidence more faithfully; they do not prove perfect speaker
+separation, recognition or transcription on every call.
 
-| Part | What it does | Current limit |
-|---|---|---|
-| Local inbox | Shows recordings, transcripts, reports and briefs separately; selects one source for processing | Loopback browser UI, not a hosted service |
-| Terminal workflow | Guided inbox, capture, phone delivery, diagnosis and recovery | macOS capture needs OBS and permissions |
-| Transcription | Qwen phone path, Whisper laptop/Meetily path, diarization and provenance | Optional model environments need manual setup |
-| Analysis | Detailed report, short brief, context and output validation | Pinned local Ollama baseline; no universal accuracy claim |
-| Capture guard | Watches recording health, preserves available segments, reports interruption | Closing the lid can lose audio; recovery cannot recreate it |
-| Voice ID | Local owner matching with explicit review, retention and deletion | Owner-only 1:1 use; no automatic naming or group-call claim |
-| GPU coordination | Serializes heavy jobs and checks cleanup before handover | Current two-service setup is opinionated; broader portability needs work |
-| Local usage review | Records content-free operation events and proposes improvements | Does not read meeting content or change the software itself |
-
-Code is in [`app/`](app/). The [source manifest](docs/SOURCE_MANIFEST.json) describes the extraction. Recordings, transcripts, meeting outputs, credentials, voice enrollments, private calibration reports and model weights are excluded.
-
-## Using the terminal
-
-After following [real-runtime setup](docs/SETUP.md), run `python3.11 app/mi …`, or add `app/` to your PATH and use `mi …`:
+## Everyday use after setup
 
 ```sh
-mi ui                        # Open your local inbox
-mi inbox                     # Guided selection in the terminal
-mi record                    # Start guarded laptop capture; Ctrl-C stops it
-mi sync                      # Fetch configured phone recordings; no processing
-mi sync status               # Check delivery and settlement
-mi today list                # List today's Meetily sources without processing
-mi recordings diagnose last  # Inspect the last laptop capture
-mi ollama status             # Check the local analysis service
-mi voice status              # Inspect separately configured owner Voice ID
-mi voice review last         # Explicit audio consent, then confirm any match
-mi learning status           # Check local usage collection
-mi help recovery             # Recovery guidance before retrying
+mi ui                         # Local inbox
+mi record                     # Laptop capture; Ctrl-C to stop; keep lid open
+mi sync                       # Download phone recordings; no processing
+mi sync status                # Check delivery and settlement
+mi inbox                      # Review grouping / select exact processing
+mi queue today                # Preview today's ready set; y approves
+mi queue status               # Read saved queue state
+mi queue resume               # Continue already approved pending work
+mi --transcription-backend whisper inbox  # Explicit alternative to Qwen
 ```
 
-`mi sync` needs your own separately configured Drive authorization. Delivery, grouping and processing are distinct steps. The phone lane accepts in-person recordings; it does not capture cellular or VoIP calls. Opening the inbox is read-only. Do not use `mi all` as a routine retry command.
+The launcher reads ignored `app/.local/settings.json`; your AI can configure actual
+paths, timezone and backend there. Recordings and results remain on your computer;
+phone uploads also live in your chosen Drive account. No meeting data, credentials,
+voice enrollments or model weights ship in the repository.
 
-![Output of the published terminal help command](docs/images/terminal-help.jpg)
+Full processing targets **Apple Silicon macOS**. Demos/core tests support
+macOS/Linux; Windows and full Linux capture/processing are unproven. A complete
+second-machine recording-to-report setup and universal minimum RAM remain unproven.
+Start with a short trial before relying on a long meeting.
 
-## What using it has taught me
+Phone support currently covers the known Android ASR Voice Recorder `.m4a`
+in-person lane. It does not capture cellular/VoIP calls. Follow [phone setup](docs/PHONE_SETUP.md)
+for recorder upload, read-only Drive authorization, settlement and grouping.
 
-A file can keep growing while the recording contains silence. A perfectly good transcript can cover only half a meeting. A speaker label tells you that a voice changed; it does not tell you who spoke. A faster model is not an improvement if it loses names, switches languages incorrectly or invents who agreed to do something.
+Voice ID is optional and disabled on a new install. Anonymous notes do not require
+it. A new owner needs their own evaluation and enrollment; no author calibration
+or voiceprint is included. [Voice ID guide](docs/VOICE_ID.md).
 
-Those failures shaped the current code: capture manifests and checksums, visible interruption states, exact source selection, separate saved-stage status, explicit identity review and strict model-output checks. [Problems, fixes and remaining gaps →](docs/USAGE_LEARNINGS.md)
-
-## Where help would make a difference
-
-- Measure time and peak memory by stage before trying to make the whole pipeline faster.
-- Build a consented Hindi-English evaluation set that measures names, numbers, overlap and missed speech, not just a nice-looking transcript.
-- Make local model setup and shared-memory handling easier across Macs without weakening admission and cleanup checks.
-- Improve Voice ID calibration for a new owner, including reliable rejection of unknown speakers.
-- Try the clean setup on a second machine and turn failures into reproducible fixes.
-
-[Open contributor issues](https://github.com/St-Gonne/meeting-intelligence-system/issues) · [Contributing](CONTRIBUTING.md) · [Setup](docs/SETUP.md)
-
-If you want to help, pick one measured problem. A small PR with a synthetic reproduction is easier to review than a new framework. If you use this, a star helps other people find it; if you fork it, tell us what worked and what broke.
-
-## Tests and terms
+## Contributing and verification
 
 ```sh
 python3.11 -m venv .venv
@@ -104,6 +109,16 @@ python3.11 -m venv .venv
 .venv/bin/python scripts/test_public.py
 ```
 
-Tests run in isolated temporary homes and use synthetic fixtures or fake model servers. Passing them does not establish live capture or model quality on your hardware. See [release validation](docs/RELEASE_VALIDATION.md).
+On Linux add `--portable`. Tests use temporary state and synthetic fixtures/fake
+model servers. Process-lifecycle checks require process inspection. Optional
+upstream speaker-writer integration checks need the separate runtime; skips are
+reported. Tests alone do not establish live capture or model quality.
 
-MeetingIntel application code, including Voice ID, and its accompanying developer docs use the [MIT License](app/LICENSE.md). You can use, modify and redistribute them, including in commercial products. Older architecture documents retain their existing terms; see [license scope](LICENSE.md). Third-party dependencies and model weights have their own licenses. The separate [phone-ingestion toolkit](https://github.com/St-Gonne/meetingintel-phone-ingest) remains Apache-2.0.
+[Contributing](CONTRIBUTING.md) · [Validation](docs/RELEASE_VALIDATION.md) ·
+[Report a first run](https://github.com/St-Gonne/meeting-intelligence-system/issues/new?template=first-run.yml) ·
+[Open issues](https://github.com/St-Gonne/meeting-intelligence-system/issues)
+
+The application and current developer docs use [MIT](LICENSE.md). Model weights
+and dependencies have their own terms. Earlier historical architecture documents
+retain their existing terms. The separate [phone-ingestion toolkit](https://github.com/St-Gonne/meetingintel-phone-ingest)
+is Apache-2.0. Source provenance is in [SOURCE_MANIFEST.json](docs/SOURCE_MANIFEST.json).

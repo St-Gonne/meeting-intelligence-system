@@ -17,7 +17,8 @@ from voiceprint_provider_pyannote import ProviderError
 
 
 PROJECT_ROOT = Path(str(public_path('project')))
-PHONE_ROOT = public_path("project/ingest/phone")
+PHONE_ROOT = PROJECT_ROOT / "ingest" / "phone"
+LAPTOP_ROOT = PROJECT_ROOT / "ingest" / "laptop"
 DIARIZATION_ROOT = Path(str(public_path('work/diarization')))
 STATE_ROOT = Path(str(public_path('home/Library/Application Support/MeetingIntel/voiceprint-gate5')))
 GATE4_REPORT = Path(str(public_path('home/Library/Application Support/MeetingIntel/voiceprint-gate4/voiceprint_owner_bakeoff_report.json')))
@@ -48,11 +49,11 @@ def _single_retained_identity(inbox: Gate5Inbox) -> tuple[str, str]:
     return identity, name
 
 
-def _latest_successful_phone_diarization() -> tuple[Path, Path, str]:
+def _latest_successful_supported_diarization() -> tuple[Path, Path, str]:
     candidates: list[tuple[datetime, Path, Path, str]] = []
     if not DIARIZATION_ROOT.is_dir():
         raise VoiceCommandError("no completed diarization root is available")
-    phone_root = PHONE_ROOT.resolve(strict=True)
+    admitted_roots = {PHONE_ROOT.resolve(), LAPTOP_ROOT.resolve()}
     for manifest_path in DIARIZATION_ROOT.glob("*/run_manifest.json"):
         try:
             payload = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -64,7 +65,7 @@ def _latest_successful_phone_diarization() -> tuple[Path, Path, str]:
             if not all(isinstance(value, str) and value for value in (source_identity, source_folder_text, completed_text)):
                 continue
             source_folder = Path(source_folder_text).expanduser().resolve(strict=True)
-            if source_folder.parent != phone_root:
+            if source_folder.parent not in admitted_roots:
                 continue
             completed = datetime.fromisoformat(completed_text)
             if completed.tzinfo is None:
@@ -73,9 +74,34 @@ def _latest_successful_phone_diarization() -> tuple[Path, Path, str]:
         except (OSError, ValueError, json.JSONDecodeError):
             continue
     if not candidates:
-        raise VoiceCommandError("no successful supported phone diarization is available")
+        raise VoiceCommandError("no successful supported phone or laptop diarization is available")
     _completed, source, diarization, identity = max(candidates, key=lambda row: row[0])
     return source, diarization, identity
+
+
+def _latest_successful_phone_diarization():
+    # Historical test/operator entry point; admission now includes laptops.
+    return _latest_successful_supported_diarization()
+
+
+def run_automatic(scope):
+    import meetingintel_identity as identity
+    import meetingintel_gpu as gpu
+    if scope in {"on", "off"}:
+        identity.set_enabled(scope == "on", state_root=STATE_ROOT)
+        print("Automatic owner Voice ID: " + scope)
+        return 0
+    from meetingintel_pipeline import build_audio_first_fingerprint, build_laptop_capture_fingerprint
+    from meetingintel_cli import OUTPUT_DIR
+    folder, stage, source_id = _latest_successful_supported_diarization()
+    identity._source(folder)
+    fingerprint = (build_laptop_capture_fingerprint if folder.parent == LAPTOP_ROOT else build_audio_first_fingerprint)(source_id)
+    source = type("PresentationSource", (), {"source_folder": folder, "fingerprint": fingerprint})()
+    result = gpu.job(identity.create_presentation)(source, stage, OUTPUT_DIR)
+    print("Voice ID: " + result["reason"].replace("_", " "))
+    if result.get("presentation_path"):
+        print("Transcript: " + result["presentation_path"])
+    return 0 if result["status"] in {"matched", "anonymous", "disabled"} else 1
 
 
 def _pending_candidate(inbox: Gate5Inbox, meeting_id: str, speaker: str) -> str:
@@ -100,7 +126,9 @@ def run_status() -> int:
     print(f"Retained owner enrollments: {sum(record.state == 'keep' for record in records)}")
     print(f"Pending enrollments: {sum(record.state == 'pending' for record in records)}")
     print(f"Confirmed meeting mappings: {len(inbox.trusted_map())}")
-    print("Mode: local, owner-only, explicit review")
+    import meetingintel_identity as identity
+    print("Automatic owner Voice ID: " + ("on" if identity.enabled(STATE_ROOT) else "off"))
+    print("Manual review remains available.")
     return 0
 
 
@@ -114,7 +142,7 @@ def run_review_last(
     inbox = _inbox()
     identity_id, display_name = _single_retained_identity(inbox)
     source, diarization, source_identity = _latest_successful_phone_diarization()
-    print("Selected: latest successful supported phone meeting")
+    print("Selected: latest successful supported phone or laptop meeting")
     if input_func("Use this meeting's local audio for Voice ID? Type VOICE: ") != "VOICE":
         print("Left unchanged.")
         return 0
@@ -156,10 +184,22 @@ def run_voice(
     subparsers.add_parser("status")
     review = subparsers.add_parser("review")
     review.add_argument("scope", choices=("last",))
+    automatic = subparsers.add_parser("automatic")
+    automatic.add_argument("scope", choices=("on", "off", "last"))
+    revocation = subparsers.add_parser("revoke")
+    revocation.add_argument("fingerprint")
     args = parser.parse_args(list(argv))
     try:
         if args.action == "status":
             return run_status()
+        if args.action == "automatic":
+            return run_automatic(args.scope)
+        if args.action == "revoke":
+            import meetingintel_identity as identity
+            from meetingintel_cli import OUTPUT_DIR
+            identity.revoke(args.fingerprint, OUTPUT_DIR, state_root=STATE_ROOT)
+            print("Automatic identity revoked; this meeting's display is anonymous.")
+            return 0
         return run_review_last(input_func=input_func, terminal_isatty=terminal_isatty)
     except (Gate5Error, PreviewError, ProviderError, VoiceCommandError, OSError, ValueError) as exc:
         print(f"Voice ID stopped safely: {exc}", file=sys.stderr)
