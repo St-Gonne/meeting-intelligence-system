@@ -3,6 +3,10 @@
 This is the public application. Read README.md, docs/AI_SETUP.md and docs/SETUP.md
 before installing or processing anything. docs/STATUS.md is current; the older
 control/release-plan documents explicitly marked historical are background.
+Read docs/DEPENDENCY_SECURITY.md before any runtime installation. Open issue #15
+tracks unresolved Torch/Transformers risk in the shared Whisper speaker runtime,
+which is also used with Qwen. Do not call full setup security-cleared, override
+upstream pins, or upgrade an existing working installation without a separate plan.
 
 ## If the user wants to get started
 

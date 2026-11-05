@@ -30,7 +30,15 @@ phone delivery additionally needs rclone, and laptop capture needs Node 22+
 (with WebSocket) and signed OBS. Keep your existing installations and model stores.
 The user grants microphone and screen/system-audio permissions themselves.
 
-Rebuild the recorded environments before attempting unreviewed package upgrades:
+Before installing, read [dependency security status](DEPENDENCY_SECURITY.md).
+Open [issue #15](https://github.com/St-Gonne/meeting-intelligence-system/issues/15)
+blocks recommending the full runtime as security-cleared. This also affects Qwen,
+because the Whisper environment supplies its alignment and diarization. Start with
+the model-free demos; do not bypass dependency constraints to silence alerts.
+
+The following commands build the separate baseline environments. These are now
+security-updated requirements based on the recorded installation, rather than an
+exact freeze of the original machine:
 
 ```sh
 python3.11 -m venv "$HOME/.local/share/meetingintel/runtimes/whisper"
@@ -42,9 +50,11 @@ python3.11 -m venv "$HOME/.local/share/meetingintel/runtimes/qwen"
 Qwen and Whisper use different Torch/Transformers versions. Keep both environments
 separate. The Whisper environment also supplies alignment and diarization when
 Qwen transcribes. If choosing only Whisper, the Qwen environment/download is optional.
-These snapshots describe a working baseline; package availability on a fresh
-machine is not guaranteed. If installation fails, retain the error and report the
-specific version. Do not silently replace the model/backend to claim success.
+Both updated requirement lists passed pip dry-run resolution on Apple Silicon /
+Python 3.11 on 6 November. The changed libraries passed isolated smoke checks, but
+a fresh full runtime installation and real-audio inference remain unverified.
+Package availability on another machine is not guaranteed. If installation fails,
+retain the error and report the specific version. Do not silently replace the model/backend to claim success.
 
 ## 3. Download your model assets
 

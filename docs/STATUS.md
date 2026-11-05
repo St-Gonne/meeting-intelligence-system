@@ -1,4 +1,4 @@
-# Current public scope — 5 November 2026
+# Current public scope — 6 November 2026
 
 The public application now includes the recent speaker export/overlap repairs,
 Qwen window recovery, accepted-stage reuse, source-day delivery fixes, explicit
@@ -25,3 +25,9 @@ CODE_RELEASE_PLAN.md under docs/ are explicitly historical.
 Recording metadata and phone filename timestamps currently require Asia/Kolkata.
 General timezone portability remains outside this release; unsupported settings
 fail before processing rather than creating invalid canonical sources.
+
+Dependency maintenance on 6 November updates compatible non-ML security pins and
+the matching OpenTelemetry family. Torch/Transformers advisories in the shared
+Whisper speaker runtime remain open and block a security-cleared full setup, even
+with Qwen transcription. See [dependency security status](DEPENDENCY_SECURITY.md)
+and [issue #15](https://github.com/St-Gonne/meeting-intelligence-system/issues/15).
