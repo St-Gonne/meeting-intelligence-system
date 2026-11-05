@@ -10,7 +10,7 @@ charset-normalizer==3.5.1
 click==8.5.0
 cloudpickle==3.1.2
 decorator==5.3.1
-filelock==4.2.1
+filelock==4.2.9
 fsspec==2026.7.0
 h11==0.16.0
 hf-xet==1.6.0
@@ -52,9 +52,9 @@ soxr==1.1.0
 sympy==1.14.0
 threadpoolctl==3.6.0
 tokenizers==0.23.2
-torch==2.14.0
+torch==2.15.0
 tqdm==4.70.1
-transformers==5.17.0
+transformers==5.9.0
 typer==0.27.2
 typing_extensions==4.16.0
 urllib3==2.8.0
