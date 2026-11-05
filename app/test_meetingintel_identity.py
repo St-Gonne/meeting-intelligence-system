@@ -146,7 +146,7 @@ class IdentityWorkerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve())) as temporary:
             root = Path(temporary); binary = root / "homebrew/bin/ffmpeg"
             binary.parent.mkdir(parents=True); binary.write_text("#!/bin/sh\nexit 0\n"); binary.chmod(0o700)
-            original_path = "/usr/bin:/bin:/usr/sbin:/sbin"
+            original_path = str(root / "empty-bin")
             commands = []
             def run(command, **kwargs):
                 commands.append(command)
@@ -162,11 +162,11 @@ class IdentityWorkerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve())) as temporary:
             root = Path(temporary); binary = root / "homebrew/bin/ffmpeg"
             binary.parent.mkdir(parents=True); binary.write_text("#!/bin/sh\nexit 0\n"); binary.chmod(0o700)
-            with patch.dict(os.environ, {"PATH": "/usr/bin:/bin"}), patch.object(identity.Path, "home", return_value=root):
+            with patch.dict(os.environ, {"PATH": str(Path(temporary) / "empty-bin")}), patch.object(identity.Path, "home", return_value=root):
                 with self.assertRaisesRegex(ValueError, "synthetic failure"):
                     with identity._embedding_audio_environment():
                         raise ValueError("synthetic failure")
-                self.assertEqual("/usr/bin:/bin", os.environ["PATH"])
+                self.assertEqual(str(root / "empty-bin"), os.environ["PATH"])
             with patch.dict(os.environ, {"PATH": str(binary.parent)}):
                 with identity._embedding_audio_environment():
                     self.assertEqual(str(binary.parent), os.environ["PATH"])
@@ -174,7 +174,7 @@ class IdentityWorkerTests(unittest.TestCase):
     def test_missing_embedding_tool_has_existing_safe_reason(self):
         from voiceprint_gate5_preview import PreviewError
         with tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve())) as temporary, \
-             patch.dict(os.environ, {"PATH": "/usr/bin:/bin"}), \
+             patch.dict(os.environ, {"PATH": str(Path(temporary) / "empty-bin")}), \
              patch.object(identity.Path, "home", return_value=Path(temporary)):
             with self.assertRaisesRegex(PreviewError, "^ffmpeg is unavailable$"):
                 with identity._embedding_audio_environment():
@@ -335,7 +335,7 @@ class IdentityWorkerTests(unittest.TestCase):
                 self.assertEqual(str(binary), identity.shutil.which("ffmpeg"))
                 return next(vectors)
             fp = hashlib.sha256(f"meetingintel|audio_first|v1|{source.source_identity}".encode()).hexdigest()
-            with patch.dict(os.environ, {"PATH": "/usr/bin:/bin"}), \
+            with patch.dict(os.environ, {"PATH": str(Path(temporary) / "empty-bin")}), \
                  patch.object(identity.Path, "home", return_value=root), \
                  patch.object(identity, "_source", return_value=source), \
                  patch.object(identity, "_owner", return_value=(inbox, [owner], root / "model")), \

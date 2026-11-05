@@ -514,7 +514,7 @@
       "path": "app/test_meetingintel_identity.py",
       "source_sha256": "950ee8d943b1e029d874dfc9321296f2627703b6d65138f414ee43bab3768ee7",
       "adapted": false,
-      "release_sha256": "02bbeef5f83cde6b1c8dbdb449d337ab24f7d56933c616db5cca1b740db11b15"
+      "release_sha256": "2c8063e0e83f3e8157dbb3407abc8d6ef879ae34e5a2336c61d54e6806da8e50"
     },
     {
       "path": "app/test_meetingintel_inbox.py",
