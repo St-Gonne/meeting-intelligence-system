@@ -484,7 +484,7 @@
       "path": "app/test_meetingintel_canary.py",
       "source_sha256": "25678cded752ff4de988649c0957e350c78ae37287f81b119bdf665a00d60164",
       "adapted": false,
-      "release_sha256": "25678cded752ff4de988649c0957e350c78ae37287f81b119bdf665a00d60164"
+      "release_sha256": "998f15542cd886d8a68de4ef56c9169d05c0a03dafba2072a0bccb7c1e61a43a"
     },
     {
       "path": "app/test_meetingintel_capture_alert.py",
@@ -502,7 +502,7 @@
       "path": "app/test_meetingintel_delivery_dates.py",
       "source_sha256": "bfaff69833f87468363126fa0e9f63888ae39ac978245d924a8fbd93188069bc",
       "adapted": false,
-      "release_sha256": "bfaff69833f87468363126fa0e9f63888ae39ac978245d924a8fbd93188069bc"
+      "release_sha256": "755a25be63425b667c0de6a6b93444a434945b36a8dd281ec07594639c2c7402"
     },
     {
       "path": "app/test_meetingintel_gpu.py",
@@ -514,7 +514,7 @@
       "path": "app/test_meetingintel_identity.py",
       "source_sha256": "950ee8d943b1e029d874dfc9321296f2627703b6d65138f414ee43bab3768ee7",
       "adapted": false,
-      "release_sha256": "ccc25dfbb524a007445944517afed7b72b17dec0923f152215fe341bc7b358a9"
+      "release_sha256": "02bbeef5f83cde6b1c8dbdb449d337ab24f7d56933c616db5cca1b740db11b15"
     },
     {
       "path": "app/test_meetingintel_inbox.py",
@@ -550,7 +550,7 @@
       "path": "app/test_meetingintel_pipeline.py",
       "source_sha256": "542047934018a4113f7121d26c831eabed07e69920493916aaf8a73c2e65fb83",
       "adapted": true,
-      "release_sha256": "f2b6a2443244aa4574c0d474af91466abd81011406e6676110967d235602b00e"
+      "release_sha256": "4cc350385023179c6e9ad365da859d85e0ed7114701d6fd622fcce8278434161"
     },
     {
       "path": "app/test_meetingintel_progress.py",
@@ -562,7 +562,7 @@
       "path": "app/test_meetingintel_queue.py",
       "source_sha256": "53dd79cfd2ceb92cebe09324ea0e91757d1a20d0c2c50497d76c17d11a60b4f3",
       "adapted": false,
-      "release_sha256": "53dd79cfd2ceb92cebe09324ea0e91757d1a20d0c2c50497d76c17d11a60b4f3"
+      "release_sha256": "d3a445e9fa155f074e716403c6a54be33d59556b88968ae4ef104d8acca3ba21"
     },
     {
       "path": "app/test_meetingintel_qwen_asr_runtime.py",
@@ -574,7 +574,7 @@
       "path": "app/test_meetingintel_run_health.py",
       "source_sha256": "b02aad2bc5dcbb131604f0f64938168be040f78e1139e3176bc93d398d3a48bf",
       "adapted": false,
-      "release_sha256": "b02aad2bc5dcbb131604f0f64938168be040f78e1139e3176bc93d398d3a48bf"
+      "release_sha256": "8169b3c6faed198bb99a5d123aa716aee0e4d1f8ed808f36e42affc5c60a4745"
     },
     {
       "path": "app/test_meetingintel_runtime.py",
@@ -586,7 +586,7 @@
       "path": "app/test_meetingintel_safe_errors.py",
       "source_sha256": "5c14abf0182b7fb56f95f722ce65dcaa778a74650b5dec4de6815138d5d48d17",
       "adapted": false,
-      "release_sha256": "5c14abf0182b7fb56f95f722ce65dcaa778a74650b5dec4de6815138d5d48d17"
+      "release_sha256": "f1dfab964ca2f44a8e0bdb77a3a41ab5333398275a9b82e74a024fe154dd6665"
     },
     {
       "path": "app/test_meetingintel_shadow_workflow.py",
@@ -598,7 +598,7 @@
       "path": "app/test_meetingintel_speaker_context.py",
       "source_sha256": "de7574e03d82ea91d618c49e787c9a53ee4262352a905835b2576278e5ed252b",
       "adapted": false,
-      "release_sha256": "de7574e03d82ea91d618c49e787c9a53ee4262352a905835b2576278e5ed252b"
+      "release_sha256": "788d3d1a5fc5508c01320cb07dfebeadf9546f566a98ded0d1819c4a80699323"
     },
     {
       "path": "app/test_meetingintel_speaker_turns.py",
@@ -746,7 +746,7 @@
       "path": "app/test_voiceprint_gate5_preview.py",
       "source_sha256": "19f58f29a96e5172906b3f7b43315951ec6dfab68d99366aa2dd78beae8c02fd",
       "adapted": true,
-      "release_sha256": "ba2b2f42ddd2d2722ffbe0c764b5867f5a2939a17c530dbb44bbbeb8aa373e76"
+      "release_sha256": "3abdda87acd9f37aedb336bc36d45b9c47779176bfe792321b232575240739c2"
     },
     {
       "path": "app/test_voiceprint_owner_bakeoff.py",

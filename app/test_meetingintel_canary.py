@@ -14,7 +14,7 @@ import meetingintel_run_health as health
 
 class CanaryTests(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(dir='/private/tmp')
+        self.tmp = tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve()))
         self.root = Path(self.tmp.name)
         self.env = patch.dict(os.environ, {'MI_LEARNING_ROOT': str(self.root / 'learning'),
             'MI_RUN_HEALTH_ROOT': str(self.root / 'health'), 'MI_RUNTIME_ROOT': str(self.root / 'runtime')})

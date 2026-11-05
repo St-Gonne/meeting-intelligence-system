@@ -56,7 +56,7 @@ class IdentityDecisionTests(unittest.TestCase):
 
 class IdentityPresentationTests(unittest.TestCase):
     def setUp(self):
-        temporary = tempfile.TemporaryDirectory(dir="/private/tmp")
+        temporary = tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve()))
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
         self.state = self.root / "gate5"
@@ -143,7 +143,7 @@ class IdentityWorkerTests(unittest.TestCase):
 
     def test_scheduler_path_fallback_reaches_frozen_embedding_decoder(self):
         import voiceprint_provider_pyannote as provider
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve())) as temporary:
             root = Path(temporary); binary = root / "homebrew/bin/ffmpeg"
             binary.parent.mkdir(parents=True); binary.write_text("#!/bin/sh\nexit 0\n"); binary.chmod(0o700)
             original_path = "/usr/bin:/bin:/usr/sbin:/sbin"
@@ -159,7 +159,7 @@ class IdentityWorkerTests(unittest.TestCase):
             self.assertEqual(str(binary), commands[0][0])
 
     def test_embedding_path_scope_restores_after_failure_and_preserves_existing_tool(self):
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve())) as temporary:
             root = Path(temporary); binary = root / "homebrew/bin/ffmpeg"
             binary.parent.mkdir(parents=True); binary.write_text("#!/bin/sh\nexit 0\n"); binary.chmod(0o700)
             with patch.dict(os.environ, {"PATH": "/usr/bin:/bin"}), patch.object(identity.Path, "home", return_value=root):
@@ -173,7 +173,7 @@ class IdentityWorkerTests(unittest.TestCase):
 
     def test_missing_embedding_tool_has_existing_safe_reason(self):
         from voiceprint_gate5_preview import PreviewError
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary, \
+        with tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve())) as temporary, \
              patch.dict(os.environ, {"PATH": "/usr/bin:/bin"}), \
              patch.object(identity.Path, "home", return_value=Path(temporary)):
             with self.assertRaisesRegex(PreviewError, "^ffmpeg is unavailable$"):
@@ -306,7 +306,7 @@ class IdentityWorkerTests(unittest.TestCase):
             self.assertEqual("/stage/audio.srt", result.transcript_path)
 
     def test_worker_unique_match_writes_separate_provenance_without_confirmation(self):
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve())) as temporary:
             root = Path(temporary)
             state = root / "gate5"
             state.mkdir()

@@ -16,7 +16,7 @@ class DeliveryDateTests(unittest.TestCase):
         record = legacy_record(fingerprint="a"*64)
         record["meeting_date_ist"] = "2026-10-02"
         ledger = {"records": {record["fingerprint"]: record}}
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve())) as temporary:
             root = Path(temporary)
             saved = root/"ledger.json"
             saved.write_text(json.dumps(ledger))
@@ -46,7 +46,7 @@ class DeliveryDateTests(unittest.TestCase):
         record["meeting_date_ist"] = "2026-10-02"
         ledger = {"records": {record["fingerprint"]: record}}
         before = dict(record)
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve())) as temporary:
             output = Path(temporary)
             requested = pipeline.write_delivery_briefs(output, ledger, date(2026, 10, 4), [record["fingerprint"]])
             self.assertEqual(output / "brief_input_2026-10-04.md", requested)

@@ -30,7 +30,7 @@ def resolved(value):
 
 class QueueTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(dir='/private/tmp')
+        self.temp = tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve()))
         self.env = patch.dict(os.environ, MI_RUNTIME_ROOT=str(Path(self.temp.name) / 'runtime'))
         self.env.start()
         self.addCleanup(self.env.stop)

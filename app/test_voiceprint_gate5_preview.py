@@ -10,7 +10,7 @@ from voiceprint_gate5_preview import _render_preview
 
 class Gate5TrackToolTests(unittest.TestCase):
     def test_scheduler_path_uses_existing_local_ffmpeg_without_executing_it(self):
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as directory:
+        with tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve())) as directory:
             root = Path(directory)
             binary = root / "homebrew/bin/ffmpeg"
             binary.parent.mkdir(parents=True)
@@ -32,7 +32,7 @@ class Gate5TrackToolTests(unittest.TestCase):
                 self.assertEqual(0o600, output.stat().st_mode & 0o777)
 
     def test_missing_or_nonexecutable_fallback_fails_before_extraction(self):
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as directory:
+        with tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve())) as directory:
             root = Path(directory)
             binary = root / "homebrew/bin/ffmpeg"
             binary.parent.mkdir(parents=True)

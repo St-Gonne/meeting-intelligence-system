@@ -19,7 +19,7 @@ class SafeErrorTests(unittest.TestCase):
         from types import SimpleNamespace
         import meetingintel_observe as observe
         from meetingintel_pipeline import ProcessingFallback
-        with tempfile.TemporaryDirectory(dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve())) as temporary:
             with patch.dict(os.environ, {"MI_LEARNING_ROOT": str(Path(temporary)/"learning"), "MI_ORIGIN": "cli"}):
                 source = SimpleNamespace(fingerprint="a"*64, source_kind="laptop_capture")
                 @observe.observed("transcription", source_scope=True)
@@ -85,7 +85,7 @@ class SafeErrorTests(unittest.TestCase):
         )
 
     def test_new_allowlisted_codes_survive_isolated_storage_without_raw_text(self):
-        with tempfile.TemporaryDirectory(dir="/private/tmp", prefix="mi-safe-errors-") as temporary_root:
+        with tempfile.TemporaryDirectory(dir=str(Path(tempfile.gettempdir()).resolve()), prefix="mi-safe-errors-") as temporary_root:
             root = Path(temporary_root) / "learning"
             with patch.dict(os.environ, {"MI_LEARNING_ROOT": str(root)}):
                 raw_private = "/private/meeting/model-secret"
